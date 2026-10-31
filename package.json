@@ -7,10 +7,13 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "tsx --test test/**/*.test.ts",
+    "import:data": "tsx src/scripts/import-excel.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
     "fastify": "^5.2.1",
     "mongodb": "^6.13.0",
     "zod": "^3.24.2"

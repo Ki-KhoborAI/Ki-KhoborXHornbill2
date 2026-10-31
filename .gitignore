@@ -13,3 +13,6 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# Data files (raw workbooks and audits)
+data/

@@ -1,8 +1,12 @@
+import dns from 'node:dns';
 import fastify, { type FastifyInstance } from 'fastify';
 import { env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './shared/errors.js';
 import { connectToDatabase, closeDatabase } from './shared/db.js';
 import { healthModule } from './modules/health/index.js';
+
+// Work around Node.js SRV lookup failures in the current environment.
+dns.setServers(['8.8.8.8']);
 
 /**
  * Builds and configures the Fastify application instance.

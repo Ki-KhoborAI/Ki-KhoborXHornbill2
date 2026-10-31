@@ -1,5 +1,13 @@
+import dns from 'node:dns';
 import { MongoClient, type Db } from 'mongodb';
 import { AppError } from './errors.js';
+
+// Configure reliable DNS servers for SRV record resolution
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  // Ignore in environments where setting DNS servers is restricted
+}
 
 let client: MongoClient | null = null;
 let db: Db | null = null;
