@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js
+.next/
+**/.next/
+out/
+**/out/
+
+# Build output
+dist/
+**/dist/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# OS / IDE files
+.DS_Store
+Thumbs.db
+*.log
+
+# Data files (raw workbooks and audits)
+data/
