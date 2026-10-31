@@ -5,6 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { locations } from "../../data/locations";
+import {
+  ASK_PREVIEW_ACKNOWLEDGEMENT,
+  createAskRequestContext,
+  logAskRequestContext,
+  type AskRequestContext,
+} from "../../lib/askContext";
 
 const suggestions = [
   {
@@ -22,81 +28,10 @@ const suggestions = [
 ];
 
 type Message = {
-  role: "user" | "assistant";
+  role: "user" | "notice";
   text: string;
-  suggestions?: string[];
+  requestContext?: AskRequestContext;
 };
-
-const followUpQuestions: Record<string, string[]> = {
-  hornbill: [
-    "Why is the Hornbill Festival called the Festival of Festivals?",
-    "Which Naga tribes participate in the festival?",
-    "What activities can visitors experience?",
-  ],
-  kisama: [
-    "What is a Naga morung?",
-    "What traditional foods can I try at Kisama?",
-    "What cultural performances can I see?",
-  ],
-  tribes: [
-    "What are the different Naga tribes?",
-    "What are some traditional Naga festivals?",
-    "What is the significance of traditional Naga attire?",
-  ],
-  default: [
-    "Tell me more about Naga traditions.",
-    "What can I explore at Kisama Heritage Village?",
-    "What traditional foods are popular in Nagaland?",
-  ],
-};
-
-function getFollowUps(question: string): string[] {
-  const value = question.toLowerCase();
-
-  if (
-    value.includes("kisama") ||
-    value.includes("morung") ||
-    value.includes("heritage village")
-  ) {
-    return followUpQuestions.kisama;
-  }
-
-  if (
-    value.includes("tribe") ||
-    value.includes("culture") ||
-    value.includes("tradition")
-  ) {
-    return followUpQuestions.tribes;
-  }
-
-  if (
-    value.includes("hornbill") ||
-    value.includes("festival") ||
-    value.includes("event")
-  ) {
-    return followUpQuestions.hornbill;
-  }
-
-  return followUpQuestions.default;
-}
-
-function getPreviewAnswer(question: string): string {
-  const value = question.toLowerCase();
-
-  if (value.includes("kisama") || value.includes("heritage village")) {
-    return "Kisama Heritage Village, near Kohima, is the main venue of the Hornbill Festival. It brings together cultural presentations, traditional architecture, crafts, food and performances representing Nagaland's diverse communities.\n\nI'm currently using preview information. The connected festival handbook and AI service will be needed for detailed, source-based answers.";
-  }
-
-  if (value.includes("tribe") || value.includes("naga culture")) {
-    return "Nagaland is home to several Naga communities, each with its own cultural practices, traditions, festivals, crafts and forms of artistic expression.\n\nI'm currently using preview information. Once the festival handbook is connected, I can provide more detailed information grounded in your source material.";
-  }
-
-  if (value.includes("hornbill")) {
-    return "The Hornbill Festival is an annual cultural festival held in Nagaland, with its main venue at Kisama Heritage Village near Kohima. It celebrates the state's diverse cultural heritage through traditional performances, crafts, food and community presentations.\n\nI'm currently using preview information. Connecting your festival handbook will allow more detailed answers based on your approved content.";
-  }
-
-  return "Thanks for your question about Nagaland! I'm currently in preview mode. Once the approved Hornbill Festival handbook and AI service are connected, I'll be able to provide a detailed answer grounded in the available festival information.";
-}
 
 export default function AskClient() {
   const searchParams = useSearchParams();
@@ -133,21 +68,20 @@ export default function AskClient() {
     const trimmed = value.trim();
     if (!trimmed) return;
 
-    const answer = getPreviewAnswer(trimmed);
-    const suggestedQuestions = getFollowUps(trimmed);
+    const requestContext = createAskRequestContext(trimmed, location);
+    logAskRequestContext(requestContext);
 
     setMessages((previous) => [
       ...previous,
-      { role: "user", text: trimmed },
+      { role: "user", text: trimmed, requestContext },
       {
-        role: "assistant",
-        text: answer,
-        suggestions: suggestedQuestions,
+        role: "notice",
+        text: ASK_PREVIEW_ACKNOWLEDGEMENT,
       },
     ]);
 
     setQuestion("");
-  }, []);
+  }, [location]);
 
   return (
     <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-black text-white">
@@ -247,44 +181,10 @@ export default function AskClient() {
                       </p>
                     </div>
                   ) : (
-                    <div className="w-full max-w-2xl py-1">
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 text-sm">
-                          ✳
-                        </span>
-                        <span className="text-xs font-medium text-neutral-300">
-                          Ki-Khobor
-                        </span>
-                      </div>
-
-                      <p className="whitespace-pre-wrap break-words text-sm leading-7 text-neutral-300">
+                    <div className="w-full max-w-2xl py-1" aria-live="polite">
+                      <p className="border-l border-white/15 pl-3 text-xs leading-6 text-neutral-500">
                         {message.text}
                       </p>
-
-                      {message.suggestions &&
-                        message.suggestions.length > 0 && (
-                          <div className="mt-5">
-                            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-neutral-500">
-                              You might also ask
-                            </p>
-
-                            <div className="flex flex-col items-start gap-2">
-                              {message.suggestions.map((suggestion) => (
-                                <button
-                                  key={suggestion}
-                                  type="button"
-                                  onClick={() => askQuestion(suggestion)}
-                                  className="max-w-full rounded-full border border-white/[0.12] px-3 py-2 text-left text-xs leading-5 text-neutral-300 transition-colors hover:border-white/30 hover:bg-white/[0.05] hover:text-white"
-                                >
-                                  {suggestion}
-                                  <span className="ml-2 text-neutral-500">
-                                    ↗
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                     </div>
                   )}
                 </article>

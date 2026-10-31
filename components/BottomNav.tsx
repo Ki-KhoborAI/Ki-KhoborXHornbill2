@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { locations } from "../data/locations";
 
 const navItems = [
   { label: "Home", href: "/", icon: "⌂" },
@@ -13,6 +14,10 @@ const navItems = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const routeLocationId = pathname.match(/^\/experience\/([^/]+)\/?$/)?.[1];
+  const routeLocation = routeLocationId
+    ? locations[routeLocationId.toLowerCase()]
+    : undefined;
 
   return (
     <nav
@@ -22,6 +27,10 @@ export default function BottomNav() {
     >
       <div className="mx-auto grid max-w-lg grid-cols-5">
         {navItems.map((item) => {
+          const href =
+            item.href === "/ask" && routeLocation
+              ? `/ask?location=${encodeURIComponent(routeLocation.id)}`
+              : item.href;
           const active =
             item.href === "/"
               ? pathname === "/"
@@ -34,7 +43,7 @@ export default function BottomNav() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={href}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
               className={`relative flex min-h-[52px] flex-col items-center justify-center gap-1.5 transition-colors ${

@@ -14,6 +14,12 @@ import {
   type ExperienceSectionKey,
   locations,
 } from "../../../data/locations";
+import {
+  ASK_PREVIEW_ACKNOWLEDGEMENT,
+  createAskRequestContext,
+  logAskRequestContext,
+  type AskRequestContext,
+} from "../../../lib/askContext";
 
 const BOTTOM_NAV_HEIGHT = 64;
 
@@ -58,11 +64,17 @@ export default function ExperienceClient({
     : [];
 
   const [question, setQuestion] = useState("");
-  const [submittedQuestion, setSubmittedQuestion] = useState("");
+  const [submittedRequests, setSubmittedRequests] = useState<AskRequestContext[]>([]);
   const [submissionCount, setSubmissionCount] = useState(0);
 
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const hasSubmittedRef = useRef(false);
+
+  useEffect(() => {
+    setQuestion("");
+    setSubmittedRequests([]);
+    hasSubmittedRef.current = false;
+  }, [id]);
 
   useEffect(() => {
     if (!hasSubmittedRef.current) return;
@@ -80,7 +92,9 @@ export default function ExperienceClient({
     if (!trimmedQuestion) return;
 
     hasSubmittedRef.current = true;
-    setSubmittedQuestion(trimmedQuestion);
+    const requestContext = createAskRequestContext(trimmedQuestion, location);
+    logAskRequestContext(requestContext);
+    setSubmittedRequests((previous) => [...previous, requestContext]);
     setQuestion("");
     setSubmissionCount((count) => count + 1);
   }
@@ -96,7 +110,7 @@ export default function ExperienceClient({
 
   if (!location) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0b0b0b] px-6 text-white">
+      <main className="flex min-h-screen items-center justify-center bg-[#0b0b0b] px-6 pb-[calc(64px+env(safe-area-inset-bottom))] text-white">
         <div className="max-w-md">
           <p className="text-xs tracking-[0.2em] text-white/50">
             KI-KHOBOR × HORNBILL
@@ -279,32 +293,26 @@ export default function ExperienceClient({
                 ))}
               </div>
 
-              <Link
-                href={`/ask?location=${encodeURIComponent(id)}`}
-                className="mt-5 inline-flex min-h-11 items-center border border-white/20 px-4 text-xs text-white/80 transition hover:border-white/50 hover:text-white"
-              >
-                Ask with {location.name} context <span className="ml-3" aria-hidden="true">↗</span>
-              </Link>
             </div>
 
-            {submittedQuestion && (
-              <div className="mt-8 space-y-4 sm:ml-[52px]">
+            {submittedRequests.map((request, index) => (
+              <div
+                key={`${index}-${request.question}`}
+                className="mt-8 space-y-4 sm:ml-[52px]"
+              >
                 <div className="ml-auto max-w-[90%] break-words rounded-2xl rounded-br-sm bg-white px-4 py-3 text-sm text-black">
-                  {submittedQuestion}
+                  {request.question}
                 </div>
 
-                <div
-                  ref={latestMessageRef}
-                  className="max-w-[90%] break-words rounded-2xl rounded-bl-sm border border-white/10 bg-[#151515] p-4"
+                <p
+                  ref={index === submittedRequests.length - 1 ? latestMessageRef : undefined}
+                  aria-live={index === submittedRequests.length - 1 ? "polite" : undefined}
+                  className="max-w-[90%] border-l border-white/15 pl-3 text-xs leading-6 text-white/50"
                 >
-                  <p className="text-sm leading-6 text-white/75">
-                    The chat is currently in preview mode. The verified
-                    festival knowledge service has not been connected yet,
-                    so I can&apos;t provide a verified answer to this question.
-                  </p>
-                </div>
+                  {ASK_PREVIEW_ACKNOWLEDGEMENT}
+                </p>
               </div>
-            )}
+            ))}
           </section>
         </div>
       </div>
