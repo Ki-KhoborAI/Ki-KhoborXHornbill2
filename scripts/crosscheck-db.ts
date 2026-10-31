@@ -10,8 +10,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { connectToDatabase, closeDatabase } from '../shared/db.js';
-import { env } from '../config/env.js';
+import { connectToDatabase, closeDatabase } from '../lib/db.js';
 
 const GEN_DIR = path.resolve('data', 'generated');
 
@@ -31,7 +30,7 @@ async function main() {
   console.log('  READ-ONLY - No writes will be made                  ');
   console.log('=======================================================\n');
 
-  const db = await connectToDatabase(env.MONGODB_URI);
+  const db = await connectToDatabase(process.env.MONGODB_URI);
   const tribesCol = db.collection('tribes');
   const kiCol = db.collection('knowledge_items');
 

@@ -14,8 +14,8 @@
  */
 import path from 'path';
 import fs from 'fs';
-import { parseHornbillWorkbook } from '../modules/content/importer.js';
-import type { KnowledgeItem } from '../modules/content/schemas.js';
+import { parseHornbillWorkbook } from '../lib/importer/importer.js';
+import type { KnowledgeItem } from '../lib/importer/schemas.js';
 
 const WORKBOOK_PATH = path.resolve('data', 'Ki-Khobor_Hornbill_2026_People_Culture_Extracted.xlsx');
 const OUTPUT_DIR = path.resolve('data', 'generated');

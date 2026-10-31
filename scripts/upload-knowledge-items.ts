@@ -1,5 +1,4 @@
-import { connectToDatabase, closeDatabase } from '../shared/db.js';
-import { env } from '../config/env.js';
+import { connectToDatabase, closeDatabase } from '../lib/db.js';
 
 const rawData = [
   {
@@ -195,7 +194,7 @@ const rawData = [
 
 async function main() {
   console.log('Connecting to database...');
-  const db = await connectToDatabase(env.MONGODB_URI);
+  const db = await connectToDatabase(process.env.MONGODB_URI);
   const collection = db.collection('knowledge_items');
 
   console.log(`Starting upload of ${rawData.length} items to 'knowledge_items'...`);

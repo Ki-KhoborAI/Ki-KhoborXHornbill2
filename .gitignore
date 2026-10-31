@@ -1,16 +1,9 @@
 # Dependencies
 node_modules/
-**/node_modules/
 
 # Next.js
 .next/
-**/.next/
 out/
-**/out/
-
-# Build output
-dist/
-**/dist/
 
 # Environment variables
 .env
@@ -25,5 +18,13 @@ dist/
 Thumbs.db
 *.log
 
-# Data files (raw workbooks and audits)
-data/
+# Raw Data files (workbooks and raw audit dumps)
+/data/generated/
+/data/*.xlsx
+/data/*.docx
+/data/workbook_raw_dump.json
+
+# Explicitly keep application data files
+!data/locations.ts
+!data/exploreCategories.ts
+!data/knowledgeBase.json

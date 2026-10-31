@@ -2,8 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import fs from 'node:fs';
-import { parseHornbillWorkbook, executeImport, extractCellValue } from '../src/modules/content/importer.js';
-import { TribeSchema, KnowledgeItemSchema, slugify } from '../src/modules/content/schemas.js';
+import { parseHornbillWorkbook, executeImport, extractCellValue } from '../lib/importer/importer.js';
+import { TribeSchema, KnowledgeItemSchema, slugify } from '../lib/importer/schemas.js';
 
 describe('Data Layer - Schemas & Slugification', () => {
   it('generates deterministic URL-friendly slugs', () => {

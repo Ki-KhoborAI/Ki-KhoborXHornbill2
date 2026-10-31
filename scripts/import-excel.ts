@@ -1,8 +1,7 @@
 import path from 'path';
 import fs from 'fs';
-import { env } from '../config/env.js';
-import { connectToDatabase, closeDatabase } from '../shared/db.js';
-import { parseHornbillWorkbook, executeImport } from '../modules/content/importer.js';
+import { connectToDatabase, closeDatabase } from '../lib/db.js';
+import { parseHornbillWorkbook, executeImport } from '../lib/importer/importer.js';
 import type { Db } from 'mongodb';
 
 /**
@@ -45,7 +44,7 @@ async function runImporter() {
   try {
     // Attempt DB connection to cross-reference existing records and check insert/update state
     console.log('Connecting to MongoDB Atlas to check existing records...');
-    db = await connectToDatabase(env.MONGODB_URI);
+    db = await connectToDatabase(process.env.MONGODB_URI);
     console.log('Connected to MongoDB Atlas successfully.\n');
   } catch (dbErr) {
     if (!isDryRun) {
