@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SiteHeader from "../components/SiteHeader";
 
 const navigation = [
   {
@@ -41,26 +42,13 @@ export default function HomePage() {
         aria-hidden="true"
       />
 
-      {/* Header */}
-      <header className="relative flex items-center justify-between gap-4 px-6 py-6 sm:px-10 sm:py-8">
-        <Link
-          href="/"
-          className="text-xs font-semibold tracking-[0.16em] sm:text-sm"
-        >
-          KI-KHOBOR <span className="text-white/50">×</span> HORNBILL
-        </Link>
-
-        <span className="hidden text-[10px] uppercase tracking-[0.2em] text-white/75 sm:block">
-          Nagaland, India
-        </span>
-
-        <Link
-          href="/explore"
-          className="text-xs text-white/85 transition hover:text-white sm:hidden"
-        >
-          Explore ↗
-        </Link>
-      </header>
+      <div className="relative">
+        <SiteHeader
+          rightLabel="Explore ↗"
+          rightHref="/explore"
+          contextLabel="Nagaland, India"
+        />
+      </div>
 
       {/* Main hero content */}
       <section className="relative mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-6 pb-16 pt-12 sm:px-12 lg:px-16">
