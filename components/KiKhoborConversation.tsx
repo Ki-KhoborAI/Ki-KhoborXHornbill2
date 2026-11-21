@@ -67,6 +67,10 @@ export default function KiKhoborConversation({
           question: trimmed,
           activeLocationId: location?.id ?? null,
           activeTribe: location?.tribeName ?? null,
+          conversationHistory: messages
+            .filter((m) => m.role === "user" || m.role === "assistant")
+            .map((m) => ({ role: m.role, text: m.text }))
+            .slice(-4),
         }),
       });
       if (!response.ok) throw new Error(`API responded with status: ${response.status}`);

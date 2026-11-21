@@ -2,41 +2,21 @@ import { NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/db";
 
 export async function GET() {
-  const startTime = Date.now();
-  let dbStatus = "connected";
-  let collectionsCount: Record<string, number> = {};
-
   try {
-    const db = await getDatabase();
-    // Quick ping
+    const db = await getDatabase("kikhobor");
     await db.command({ ping: 1 });
 
-    const [kiCount, tribesCount] = await Promise.all([
-      db.collection("knowledge_items").countDocuments(),
-      db.collection("tribes").countDocuments(),
-    ]);
-
-    collectionsCount = {
-      knowledge_items: kiCount,
-      tribes: tribesCount,
-    };
+    return NextResponse.json(
+      { status: "ok", database: "connected" },
+      { status: 200 }
+    );
   } catch (error) {
-    dbStatus = "disconnected";
-    console.warn("Health check DB ping failed:", error);
+    // Log minimal message on the server only without leaking credentials or internal error details
+    console.warn("MongoDB Atlas health check ping failed");
+    return NextResponse.json(
+      { status: "error", database: "disconnected" },
+      { status: 503 }
+    );
   }
-
-  const responseTimeMs = Date.now() - startTime;
-
-  return NextResponse.json({
-    status: dbStatus === "connected" ? "ok" : "degraded",
-    service: "Ki-Khobor Hornbill Next.js Unified API",
-    timestamp: new Date().toISOString(),
-    uptime: Math.floor(process.uptime()),
-    database: {
-      status: dbStatus,
-      collections: collectionsCount,
-    },
-    responseTimeMs,
-  });
 }
 
