@@ -125,7 +125,9 @@ function detectTribeAggregateIntent(qLower: string): "count" | "list" | null {
     /different\s+naga\s+tribes/i.test(qLower) ||
     /all\s+naga\s+tribes/i.test(qLower) ||
     /all\s+the\s+tribes/i.test(qLower) ||
-    /list\s+of\s+tribes/i.test(qLower);
+    /list\s+of\s+tribes/i.test(qLower) ||
+    /naga\s+tribes/i.test(qLower) ||
+    /tribes\s+and\s+(their\s+)?cultures?/i.test(qLower);
 
   if (isListQuery) {
     return "list";
@@ -306,6 +308,67 @@ function formatTribeResponse(tribe: any, subCategory: string) {
   }
 }
 
+// ─── Festival activities intent detection ─────────────────────────────────────
+const FESTIVAL_ACTIVITIES_PATTERN =
+  /\b(what\s+can\s+(i|we)\s+(do|see|experience|enjoy)|what\s+(is\s+there|are\s+there)\s+to\s+(do|see)|things?\s+to\s+do|activities?\s+(to\s+do\s+(at|during|in|around)|at|during|in|around)|experiences?\s+(at|during|at\s+the|during\s+the)|what\s+activities|what\s+can\s+visitors?\s+(do|see)|what\s+to\s+do|what\s+do\s+(you|they)\s+do|what\s+happens\s+(at|during)|what\s+is\s+(there|on)\s+to\s+(do|see))\b/i;
+
+function isFestivalActivitiesQuery(q: string): boolean {
+  return FESTIVAL_ACTIVITIES_PATTERN.test(q);
+}
+
+function festivalActivitiesResponse(): SearchResponse {
+  return {
+    title: "Things to Do at the Hornbill Festival",
+    category: "Festival Overview",
+    answer:
+      "The Hornbill Festival — the Festival of Festivals — offers a wide range of experiences for visitors:\n\n" +
+      "• Cultural Performances: Witness traditional dances, songs, and ceremonies by all 18 Naga tribes at Kisama Heritage Village.\n" +
+      "• Hornbill Music Festival: Enjoy live performances blending traditional Naga music with contemporary artists.\n" +
+      "• Traditional Sports: Watch and participate in indigenous Naga sports and games.\n" +
+      "• Food Festival: Taste authentic Naga cuisine, traditional smoked meats, rice beer, and more.\n" +
+      "• Craft & Handloom Sales: Browse and buy traditional Naga shawls, cane-bamboo crafts, and handloom textiles.\n" +
+      "• Morung Visits: Explore tribal morungs (traditional dormitories) at Kisama, each showcasing tribal architecture and artefacts.\n" +
+      "• Adventure Activities: Trekking in Dzukou Valley, village walks in Khonoma, offroading, and heritage walks are available nearby.\n\n" +
+      "Note: The detailed 2026 event programme and daily schedule will be published closer to the festival dates. Check the official Hornbill Festival website for updates.",
+    source: "Hornbill Festival 2025 Final Handbook, p. PDF idx 3-4",
+    relatedItems: [
+      { id: "kisama-heritage-venue-kisama-naga-heritage-village", title: "Kisama - Naga Heritage Village", category: "kisama_heritage" },
+      { id: "adventure-trekking-trekking-dzukou-valley-trek", title: "Dzukou Valley Trek", category: "adventure_trekking" },
+      { id: "morungs-overview-kisama-heritage-village-general-morung-description", title: "Kisama Heritage Village - General Morung Description", category: "morungs_overview" },
+    ],
+  };
+}
+
+// ─── Out-of-scope political / government query detection ──────────────────────
+const POLITICAL_QUERY_PATTERN =
+  /\b(chief\s+minister|cm\s+of|governor\s+of|cm\b|mla\b|mp\b|minister\s+of|home\s+minister|cabinet\s+minister|government\s+official|politician|election|vote|party\s+(in\s+)?(power|government))\b/i;
+
+function isOutOfScopePoliticalQuery(q: string): boolean {
+  return POLITICAL_QUERY_PATTERN.test(q);
+}
+
+function outOfScopePoliticalResponse(): SearchResponse {
+  return {
+    title: "Out of Scope",
+    category: "General",
+    answer:
+      "Information about current government officials, political matters, and elected representatives is outside the scope of the Ki-Khobor knowledge base.\n\n" +
+      "For verified and up-to-date information, please consult official Government of Nagaland sources or reputable news outlets.\n\n" +
+      "I can help you with:\n" +
+      "• The Hornbill Festival — venue, dates, and history\n" +
+      "• The 18 indigenous tribes of Nagaland and their traditions\n" +
+      "• Cultural activities at Kisama Heritage Village\n" +
+      "• Morungs and their significance\n" +
+      "• Trekking and adventure experiences around Nagaland",
+    source: null,
+    relatedItems: [
+      { id: "what-the-hornbill-festival-is", title: "What the Hornbill Festival is", category: "festival_overview" },
+      { id: "kisama-heritage-venue-kisama-naga-heritage-village", title: "Kisama - Naga Heritage Village", category: "kisama_heritage" },
+      { id: "introduction-to-nagaland-for-visitors", title: "Introduction to Nagaland", category: "festival_overview" },
+    ],
+  };
+}
+
 // ─── Greeting detection ───────────────────────────────────────────────────────
 const GREETING_PATTERN =
   /^(hi|hello|hey|howdy|greetings|good\s+morning|good\s+afternoon|good\s+evening|how\s+are\s+you|how\s+r\s+u|hiya|yo)\s*[!?.]*$/i;
@@ -375,6 +438,64 @@ function eventUnavailableResponse(): SearchResponse {
   };
 }
 
+// ─── Private / out-of-scope detection ────────────────────────────────────────
+const PRIVATE_INFO_PATTERN =
+  /wi[-\s]?fi\s*(password|pass|code|key|credential|access)|password\s*(for|at|of|to)|hotel\s*(pass|wifi|wi[-\s]?fi|credential|room\s*key|check[- ]?in\s*code)|booking\s*(confirm|reference|code|number|pin)|room\s*(number|key|access)|check[- ]?in\s*(code|pin|password)/i;
+
+function isPrivateInfoQuery(q: string): boolean {
+  return PRIVATE_INFO_PATTERN.test(q);
+}
+
+function privateInfoResponse(): SearchResponse {
+  return {
+    title: "Private Information",
+    category: "General",
+    answer:
+      "I'm sorry, but I'm not able to provide hotel credentials, Wi-Fi passwords, booking confirmation codes, or other private account information.\n\n" +
+      "For hotel-specific queries, please contact your accommodation directly or check your booking confirmation email.\n\n" +
+      "I can help you with:\n" +
+      "• The Hornbill Festival — venue, dates, and history\n" +
+      "• The 18 indigenous tribes of Nagaland\n" +
+      "• Cultural activities and attractions at Kisama Heritage Village\n" +
+      "• Trekking and adventure experiences around Nagaland",
+    source: null,
+    relatedItems: [
+      { id: "what-the-hornbill-festival-is", title: "What the Hornbill Festival is", category: "festival_overview" },
+      { id: "kisama-naga-heritage-village", title: "Kisama Heritage Village", category: "kisama_heritage" },
+    ],
+  };
+}
+
+// ─── Packing / visitor preparation detection ────────────────────────────────
+const PACKING_QUERY_PATTERN =
+  /\b(pack(ing)?|bring(ing)?|luggage|gear|what\s+to\s+wear|what\s+should\s+.*(bring|pack|carry)|items?\s+to\s+bring)\b/i;
+
+function isPackingQuery(q: string): boolean {
+  return PACKING_QUERY_PATTERN.test(q);
+}
+
+function packingUnavailableResponse(): SearchResponse {
+  return {
+    title: "Information Not Available",
+    category: "General",
+    answer:
+      "A specific visitor packing list or gear guide is not currently available in the Ki-Khobor knowledge base.\n\n" +
+      "Generally, Nagaland in December experiences cool to cold winter temperatures, especially in the evenings at Kisama (elevation ~1,400m). Visitors typically recommend carrying warm layers, comfortable walking shoes for hilly terrain, and necessary personal essentials.\n\n" +
+      "You can ask me about:\n" +
+      "• The Hornbill Festival — dates, venue, history\n" +
+      "• The 18 indigenous tribes of Nagaland\n" +
+      "• Cultural activities at Kisama Heritage Village\n" +
+      "• Morungs and their significance\n" +
+      "• Trekking — Dzukou Valley, Japfü Peak",
+    source: null,
+    relatedItems: [
+      { id: "what-the-hornbill-festival-is", title: "What the Hornbill Festival is", category: "festival_overview" },
+      { id: "kisama-naga-heritage-village", title: "Kisama - Naga Heritage Village", category: "kisama_heritage" },
+      { id: "geography-basics-climate-best-time-to-visit", title: "Best time to visit", category: "geography_basics" },
+    ],
+  };
+}
+
 export function searchKnowledge(
   query: string,
   activeLocationId?: string | null,
@@ -386,6 +507,26 @@ export function searchKnowledge(
   // 0. Detect Greeting — short-circuit
   if (isGreeting(qLower)) {
     return greetingResponse();
+  }
+
+  // 0a. Detect private/out-of-scope — short-circuit
+  if (isPrivateInfoQuery(qLower)) {
+    return privateInfoResponse();
+  }
+
+  // 0b. Detect packing / what to bring — honest unavailable response
+  if (isPackingQuery(qLower)) {
+    return packingUnavailableResponse();
+  }
+
+  // 0c. Out-of-scope political / government queries
+  if (isOutOfScopePoliticalQuery(qLower)) {
+    return outOfScopePoliticalResponse();
+  }
+
+  // 0d. Festival activities / things to do
+  if (isFestivalActivitiesQuery(qLower)) {
+    return festivalActivitiesResponse();
   }
 
   // 1. Detect tribe count or tribe list intent
@@ -515,9 +656,20 @@ export function searchKnowledge(
         score += 200;
       }
     }
+    // Kisama cultural activities: boost kisama_heritage and morungs, NOT window-to-nagaland
     if (tokens.includes("activit") || tokens.includes("activities") || tokens.includes("experience") || tokens.includes("experiences")) {
-      if (idLower.includes("window-to-nagaland") || tLower.includes("window to nagaland")) {
-        score += 200;
+      const kisamaMentioned = qLower.includes("kisama") || tokens.includes("kisama");
+      if (kisamaMentioned) {
+        if (idLower.includes("kisama-naga-heritage-village") || tLower.includes("kisama naga heritage village") || tLower.includes("kisama heritage")) {
+          score += 250;
+        } else if (idLower.includes("morung") || tLower.includes("morung") || catLower.includes("morung")) {
+          score += 150;
+        }
+      } else {
+        // General activities question — slight boost for adventure/trekking
+        if (catLower.includes("adventure") || catLower.includes("trekking")) {
+          score += 60;
+        }
       }
     }
 
@@ -546,17 +698,20 @@ export function searchKnowledge(
   scored.sort((a, b) => b.score - a.score);
   const bestMatch = scored[0];
 
-  if (!bestMatch || bestMatch.score < 8) {
+  if (!bestMatch || bestMatch.score < 25) {
     return {
-      title: "Festival Knowledge Assistant",
+      title: "Information Not Available",
+      category: "General",
       answer:
-        `I could not find a specific document matching "${cleanQuery}". You can try asking about:\n\n` +
-        `• "What is the Hornbill Festival?"\n` +
-        `• "Tell me about the different Naga tribes and their cultures."\n` +
-        `• "What can I discover at Kisama Heritage Village?"\n` +
-        `• "What is a Morung?"\n` +
-        `• "Dzukou Valley trek and flora"\n` +
-        `• Or any specific tribe (Angami, Ao, Konyak, Sumi, Lotha, etc.)`,
+        `I don't have specific information about "${cleanQuery}" in the Ki-Khobor knowledge base.\n\n` +
+        "You can ask me about:\n" +
+        "• The Hornbill Festival — dates, venue, and history\n" +
+        "• The 18 indigenous tribes of Nagaland and their traditions\n" +
+        "• Cultural activities at Kisama Heritage Village\n" +
+        "• Morungs and their significance\n" +
+        "• Trekking — Dzukou Valley, Japfü Peak\n" +
+        "• Any specific tribe (Angami, Ao, Konyak, Sumi, Lotha, etc.)",
+      source: null,
       relatedItems: [
         { id: "what-the-hornbill-festival-is", title: "What the Hornbill Festival is", category: "festival_overview" },
         { id: "kisama-naga-heritage-village", title: "Kisama - Naga Heritage Village", category: "kisama_heritage" },
@@ -568,7 +723,7 @@ export function searchKnowledge(
   const primary = bestMatch.item;
   const related = scored
     .slice(1, 4)
-    .filter((s) => s.score >= 10 && s.item.id !== primary.id)
+    .filter((s) => s.score >= 25 && s.item.id !== primary.id)
     .map((s) => ({ id: s.item.id, title: s.item.title, category: s.item.category }));
 
   // Synthesize clean response
