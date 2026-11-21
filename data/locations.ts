@@ -93,9 +93,11 @@ function createMorung(id: string, tribeName: string): Location {
       morungSectionKeys.map((key) => [key, "not-started"])
     ) as NonNullable<Location["sectionVerificationStatus"]>,
     questions: [
+      `What verified information is available about the ${tribeName} Morung?`,
       "What can I see at this Morung?",
       `Tell me something about the ${tribeName} people.`,
-      "What is this Morung known for?",
+      "What is happening at Hornbill?",
+      "Explore other Morungs",
     ],
     media: [],
     relatedEvents: [],
@@ -131,10 +133,9 @@ export const locations: Record<string, Location> = {
   kachari: createMorung("kachari", "Kachari"),
   lotha: createMorung("lotha", "Lotha"),
   phom: createMorung("phom", "Phom"),
-  pochury: {
-    ...createMorung("pochury", "Pochury"),
-    image: "/images/morungs/pochury-card.jpg",
-  },
+  // The supplied Pochury file duplicates the Chakhesang photograph; keep the
+  // Pochury image unset until a correctly mapped photograph is available.
+  pochury: createMorung("pochury", "Pochury"),
   rengma: createMorung("rengma", "Rengma"),
   sangtam: createMorung("sangtam", "Sangtam"),
   sumi: createMorung("sumi", "Sumi"),
