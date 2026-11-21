@@ -1,23 +1,10 @@
 import Link from "next/link";
+import SiteHeader from "../../components/SiteHeader";
 
 export default function UpdatesPage() {
   return (
     <main className="min-h-screen bg-[#080808] pb-[calc(64px+env(safe-area-inset-bottom))] text-white">
-      <header className="flex items-center justify-between border-b border-white/10 px-5 py-6 sm:px-10">
-        <Link href="/" className="text-xs font-semibold tracking-[0.12em]">
-          KI-KHOBOR <span className="text-white/50">×</span> HORNBILL
-          <span className="mt-1 block text-[9px] font-normal uppercase tracking-[0.2em] text-white/45">
-            Ask. Know. Do.
-          </span>
-        </Link>
-
-        <Link
-          href="/explore"
-          className="text-xs text-white/60 transition hover:text-white"
-        >
-          Explore ↗
-        </Link>
-      </header>
+      <SiteHeader rightLabel="Explore ↗" rightHref="/explore" />
 
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-10 sm:py-24">
         <p className="text-[10px] uppercase tracking-[0.25em] text-white/45">

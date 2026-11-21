@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { exploreCategories } from "../../data/exploreCategories";
 import { locations } from "../../data/locations";
+import MorungCardImage from "../../components/MorungCardImage";
+import SiteHeader from "../../components/SiteHeader";
 
 export const instant = false;
 
@@ -20,21 +22,10 @@ export default async function ExplorePage({
 
   return (
     <main className="min-h-screen bg-[#080808] pb-[calc(64px+env(safe-area-inset-bottom))] text-white">
-      <header className="flex items-center justify-between border-b border-white/10 px-5 py-6 sm:px-10">
-        <Link href="/" className="text-xs font-semibold tracking-[0.12em]">
-          KI-KHOBOR <span className="text-white/50">×</span> HORNBILL
-          <span className="mt-1 block text-[9px] font-normal uppercase tracking-[0.2em] text-white/45">
-            Ask. Know. Do.
-          </span>
-        </Link>
-
-        <Link
-          href={selectedCategory ? "/explore" : "/"}
-          className="text-xs text-white/60 transition hover:text-white"
-        >
-          {selectedCategory ? "← Explore" : "← Home"}
-        </Link>
-      </header>
+      <SiteHeader
+        rightLabel={selectedCategory ? "← Explore" : "← Home"}
+        rightHref={selectedCategory ? "/explore" : "/"}
+      />
 
       {selectedCategory ? (
         <section className="mx-auto max-w-6xl px-5 py-16 sm:px-10 sm:py-24">
@@ -63,7 +54,7 @@ export default async function ExplorePage({
         </section>
       ) : (
         <>
-          <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-10 sm:pt-24">
+          <section className="mx-auto max-w-6xl px-5 pt-12 sm:px-10 sm:pt-16">
             <p className="text-[10px] uppercase tracking-[0.25em] text-white/45">
               Your festival guide
             </p>
@@ -74,16 +65,11 @@ export default async function ExplorePage({
               Discover its story.
             </h1>
 
-            <p className="mt-6 max-w-xl text-sm leading-7 text-white/55 sm:text-base">
-              Explore the Morung Houses of Kisama and browse topics across
-              Nagaland. Details will appear as verified information becomes
-              available.
-            </p>
           </section>
 
           <section
             id="morung-houses"
-            className="mx-auto max-w-6xl px-5 py-14 sm:px-10 sm:py-20"
+            className="mx-auto max-w-6xl px-5 pb-12 pt-8 sm:px-10 sm:pb-16 sm:pt-10"
           >
             <div className="flex items-end justify-between gap-4 border-b border-white/15 pb-4">
               <div>
@@ -107,15 +93,11 @@ export default async function ExplorePage({
                   aria-label={`Open ${place.name} experience`}
                   className="group min-w-0 border border-white/15 p-4 transition hover:border-white/40 hover:bg-white/[0.025] sm:p-5"
                 >
-                  <div
-                    role="img"
-                    aria-label={`${place.name} photograph placeholder`}
-                    className="flex aspect-[16/9] items-center justify-center border border-white/10 bg-[#121212]"
-                  >
-                    <span className="text-[9px] uppercase tracking-[0.18em] text-white/35">
-                      Photograph coming soon
-                    </span>
-                  </div>
+                  <MorungCardImage
+                    src={place.image}
+                    name={place.name}
+                    tribeName={place.tribeName}
+                  />
 
                   <div className="pt-5">
                     <p className="text-[9px] uppercase tracking-[0.2em] text-white/40">
