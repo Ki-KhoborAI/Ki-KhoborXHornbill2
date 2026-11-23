@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { locations } from "../../../data/locations";
 import KiKhoborConversation from "../../../components/KiKhoborConversation";
 import SiteHeader from "../../../components/SiteHeader";
@@ -29,11 +29,8 @@ export default function ExperienceClient({
 }: ExperienceClientProps) {
   const id = locationId.toLowerCase();
   const location = locations[id];
+  // imageFailed resets via parent key={id} remount when the Morung changes.
   const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [id]);
 
   const experienceSections = location
     ? experienceSectionOrder
