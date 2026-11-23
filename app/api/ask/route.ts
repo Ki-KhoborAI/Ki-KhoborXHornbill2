@@ -1,76 +1,51 @@
 import { NextResponse } from "next/server";
+import { toPublicAskResponse } from "../../../lib/apiPublicResponse";
+import {
+  parseAskRequestBody,
+  readJsonBodyWithLimit,
+} from "../../../lib/apiRequestValidation";
+import { GeminiConfigError } from "../../../lib/gemini";
 import { orchestrateMessage } from "../../../lib/orchestrator";
-import type { ConversationTurn } from "../../../lib/types";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isConversationTurn(value: unknown): value is ConversationTurn {
-  if (!isRecord(value)) return false;
-  const role = value.role;
-  const text = value.text;
-  return (
-    (role === "user" || role === "assistant") && typeof text === "string"
-  );
-}
-
-/** Narrow optional context fields to the orchestrator contract. */
-function optionalContextField(value: unknown): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  if (typeof value === "string") return value;
-  return undefined;
-}
+import { enforceAiRateLimit } from "../../../lib/rateLimit";
 
 export async function POST(req: Request) {
   try {
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid JSON in request body." },
-        { status: 400 }
-      );
-    }
+    // Shared Redis rate limit before any expensive AI / DB work.
+    const rateLimited = await enforceAiRateLimit(req);
+    if (rateLimited) return rateLimited;
 
-    const payload = isRecord(body) ? body : {};
+    const bodyResult = await readJsonBodyWithLimit(req);
+    if (!bodyResult.ok) return bodyResult.response;
+
+    const parsed = parseAskRequestBody(bodyResult.body);
+    if (!parsed.ok) return parsed.response;
+
     const { question, activeLocationId, activeTribe, conversationHistory } =
-      payload;
-
-    if (!question || typeof question !== "string") {
-      return NextResponse.json(
-        { error: "A valid question string is required in the request body." },
-        { status: 400 }
-      );
-    }
-
-    const trimmedQuestion = question.trim();
-    if (trimmedQuestion.length === 0) {
-      return NextResponse.json(
-        { error: "Question cannot be empty." },
-        { status: 400 }
-      );
-    }
-
-    // Sanitize conversationHistory to ensure expected format (last 4 messages / 2 turns)
-    const validHistory: ConversationTurn[] = Array.isArray(conversationHistory)
-      ? conversationHistory.filter(isConversationTurn).slice(-4)
-      : [];
+      parsed.data;
 
     const response = await orchestrateMessage({
-      question: trimmedQuestion,
-      conversationHistory: validHistory,
-      activeLocationId: optionalContextField(activeLocationId),
-      activeTribe: optionalContextField(activeTribe),
+      question,
+      conversationHistory,
+      activeLocationId,
+      activeTribe,
     });
 
-    return NextResponse.json(response);
+    return NextResponse.json(toPublicAskResponse(response));
   } catch (error) {
     console.error("[API Ask] Orchestrator error:", error);
+
+    if (error instanceof GeminiConfigError) {
+      return NextResponse.json(
+        {
+          error:
+            "The assistant is temporarily unavailable. Please try again later.",
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to process question", details: String(error) },
+      { error: "Failed to process question. Please try again later." },
       { status: 500 }
     );
   }

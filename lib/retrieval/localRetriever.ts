@@ -11,6 +11,7 @@ import {
   type RetrievalOutcome,
   type RetrievedRecord,
 } from "../types";
+import { festivalDateContextScoreAdjustment } from "../knowledgeQuality";
 import { evaluateRetrievalRelevance } from "./relevanceEvaluator";
 
 const items = localKnowledgeData as LocalKnowledgeItem[];
@@ -119,6 +120,15 @@ export function retrieveFromLocal(params: LocalRetrieveParams): RetrievalOutcome
     ) {
       if (id.includes("date") || t.includes("date")) score += 140;
       if (id.includes("timing") || t.includes("timing")) score += 100;
+      // Prefer current-year duration guidance over prior-edition handbook cards
+      // unless the visitor explicitly asks about 2025.
+      score += festivalDateContextScoreAdjustment({
+        id,
+        title: item.title,
+        category: item.category,
+        queryLower: qLower,
+        attributes: item.attributes,
+      });
     }
 
     if (rawTokens.includes("who") || rawTokens.includes("organizer") || rawTokens.includes("organises") || rawTokens.includes("organized")) {

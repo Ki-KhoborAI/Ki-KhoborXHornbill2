@@ -4,6 +4,7 @@ import {
   formatTribeAggregateResponse,
   formatTribeResponse,
 } from "../responseBuilder";
+import { festivalDateContextScoreAdjustment } from "../knowledgeQuality";
 import type { IntentClass, RetrievalOutcome, RetrievedRecord } from "../types";
 import { evaluateRetrievalRelevance } from "./relevanceEvaluator";
 
@@ -122,6 +123,13 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
     ) {
       if (slug.includes("date") || t.includes("date")) score += 140;
       if (slug.includes("timing") || t.includes("timing")) score += 100;
+      score += festivalDateContextScoreAdjustment({
+        id: slug || item.title || "",
+        title: item.title || "",
+        category: item.category,
+        queryLower: qLower,
+        attributes: item.attributes,
+      });
     }
 
     if (rawTokens.includes("who") || rawTokens.includes("organizer") || rawTokens.includes("organises") || rawTokens.includes("organized")) {

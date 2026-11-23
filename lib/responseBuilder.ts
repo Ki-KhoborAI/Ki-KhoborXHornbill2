@@ -1,4 +1,5 @@
-import { ai, GEMINI_MODEL } from "./gemini";
+import { GEMINI_MODEL, getGeminiClient } from "./gemini";
+import { usableKnowledgeText } from "./knowledgeQuality";
 import {
   asString,
   tribeString,
@@ -7,6 +8,15 @@ import {
   type RetrievedRecord,
   type TribeLike,
 } from "./types";
+
+/** Prefer flat/attribute tribe text, but never surface corrupted serialization. */
+function usableTribeField(
+  flat: string | null | undefined,
+  attributes: Record<string, unknown> | undefined,
+  key: string
+): string | undefined {
+  return usableKnowledgeText(tribeString(flat, attributes, key));
+}
 
 // ---------------------------------------------------------------------------
 // Controlled responses (Zero DB / Zero hallucination)
@@ -209,14 +219,35 @@ export function formatTribeResponse(
   sourceProvider: "atlas" | "local" = "atlas"
 ): AssistantResponse {
   const attrs = tribe.attributes;
-  const tribeName = tribeString(tribe.name, attrs, "tribeName") || "Tribe";
+  const tribeName =
+    usableTribeField(tribe.name, attrs, "tribeName") || "Tribe";
   const slug = tribe.slug || tribe.id?.replace(/^tribe-/, "") || "";
-  const region = tribeString(tribe.regionOrDistricts, attrs, "regionOrDistricts");
-  const festName = tribeString(tribe.traditionalFestivalName, attrs, "traditionalFestivalName");
-  const festDate = tribeString(tribe.festivalDateOrSeason, attrs, "festivalDateOrSeason");
-  const traditions = tribeString(tribe.traditions, attrs, "traditions");
-  const attire = tribeString(tribe.traditionalAttire, attrs, "traditionalAttire");
-  const significance = tribeString(tribe.culturalSignificance, attrs, "culturalSignificance");
+  const region = usableTribeField(
+    tribe.regionOrDistricts,
+    attrs,
+    "regionOrDistricts"
+  );
+  const festName = usableTribeField(
+    tribe.traditionalFestivalName,
+    attrs,
+    "traditionalFestivalName"
+  );
+  const festDate = usableTribeField(
+    tribe.festivalDateOrSeason,
+    attrs,
+    "festivalDateOrSeason"
+  );
+  const traditions = usableTribeField(tribe.traditions, attrs, "traditions");
+  const attire = usableTribeField(
+    tribe.traditionalAttire,
+    attrs,
+    "traditionalAttire"
+  );
+  const significance = usableTribeField(
+    tribe.culturalSignificance,
+    attrs,
+    "culturalSignificance"
+  );
   const source = tribe.source || "Hornbill Festival Official Handbook";
 
   let title = `${tribeName} Tribe`;
@@ -377,6 +408,8 @@ STRICT INSTRUCTIONS:
 3. If the user's specific inquiry is NOT covered in the context, say clearly: "I don't have that specific information in the Ki-Khobor knowledge base."
 4. If a field in the context is listed as missing or not available, state that honestly rather than guessing.
 5. Keep your tone informative, warm, and respectful of Naga culture.
+6. Distinguish historical edition years (for example, 2025 handbook details) from unconfirmed future editions. Never present 2025 schedules, ceremonies, or timings as the confirmed 2026 programme.
+7. If context marks dates or claims as unverified, unconfirmed, or requiring official confirmation, say so clearly and do not restate them as official facts.
 
 ${historyText ? `RECENT CONVERSATION:\n${historyText}\n\n` : ""}KNOWLEDGE BASE CONTEXT:
 ${contextBlocks}
@@ -385,7 +418,8 @@ USER QUESTION:
 ${question}`;
 
   try {
-    const callPromise = ai.models.generateContent({
+    const gemini = getGeminiClient();
+    const callPromise = gemini.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
     });

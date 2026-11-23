@@ -152,7 +152,8 @@ export type AssistantResponse = {
   attributes?: Record<string, unknown>;
   relatedItems?: Array<{ id: string; title: string; category: string }>;
   /**
-   * Internal tracking field — stripped before sending to the client.
+   * Internal tracking field — stripped at the `/api/ask` boundary via
+   * `toPublicAskResponse` before sending to the client.
    * "controlled" = no DB access (greeting, identity, out-of-scope, etc.)
    */
   dataSourceUsed?: "atlas" | "local" | "controlled";

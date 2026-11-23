@@ -19,18 +19,44 @@ try {
  */
 export const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
-const apiKey = process.env.GEMINI_API_KEY;
+/** Thrown when Gemini cannot be used due to missing/invalid local configuration. */
+export class GeminiConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GeminiConfigError";
+  }
+}
 
-if (!apiKey) {
-  throw new Error(
-    "Missing GEMINI_API_KEY environment variable. Please define it in your .env.local file."
-  );
+let geminiClient: GoogleGenAI | null = null;
+
+/** True when a non-empty GEMINI_API_KEY is present in the environment. */
+export function isGeminiConfigured(): boolean {
+  return Boolean(process.env.GEMINI_API_KEY?.trim());
 }
 
 /**
- * Singleton GoogleGenAI client instance configured with 15s HTTP timeout.
+ * Lazily construct the Gemini client.
+ * Does not throw at module import time — only when a Gemini call is attempted.
  */
-export const ai = new GoogleGenAI({
-  apiKey,
-  httpOptions: { timeout: 15000 },
-});
+export function getGeminiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new GeminiConfigError(
+      "Missing GEMINI_API_KEY environment variable. Please define it in your .env.local file."
+    );
+  }
+
+  if (!geminiClient) {
+    geminiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: { timeout: 15000 },
+    });
+  }
+
+  return geminiClient;
+}
+
+/** Test helper — clears the cached client between cases. */
+export function resetGeminiClientForTests(): void {
+  geminiClient = null;
+}
