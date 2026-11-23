@@ -6,6 +6,20 @@ import type { CellRichTextValue } from 'exceljs';
 import { parseHornbillWorkbook, executeImport, extractCellValue } from '../lib/importer/importer.js';
 import { TribeSchema, KnowledgeItemSchema, slugify } from '../lib/importer/schemas.js';
 
+/** Minimal synthetic workbook committed under test/fixtures (not the production xlsx). */
+const FIXTURE_WORKBOOK_PATH = path.resolve(
+  process.cwd(),
+  'test',
+  'fixtures',
+  'importer-sample.xlsx'
+);
+
+/** Counts encoded in the synthetic fixture (see scripts/generate-importer-test-fixture.mjs). */
+const FIXTURE_TRIBE_COUNT = 2;
+const FIXTURE_MORUNG_COUNT = 2;
+const FIXTURE_KNOWLEDGE_ITEM_COUNT = 9; // 2 morungs + 7 content-sheet rows
+const FIXTURE_TOTAL_PARSED_ROWS = FIXTURE_TRIBE_COUNT + FIXTURE_KNOWLEDGE_ITEM_COUNT;
+
 describe('Data Layer - Schemas & Slugification', () => {
   it('generates deterministic URL-friendly slugs', () => {
     assert.equal(slugify('The 18 Tribes: Angami (Kohima)'), 'the-18-tribes-angami-kohima');
@@ -90,21 +104,24 @@ describe('Data Layer - Schemas & Slugification', () => {
 });
 
 describe('Data Layer - Workbook Parser & Importer', () => {
-  const workbookPath = path.resolve(
-    process.cwd(),
-    'data',
-    'Ki-Khobor_Hornbill_2026_People_Culture_Extracted.xlsx'
-  );
-
-  it('finds the actual workbook file in data/', () => {
-    assert.equal(fs.existsSync(workbookPath), true, `Workbook must exist at ${workbookPath}`);
+  it('finds the synthetic importer fixture workbook', () => {
+    assert.equal(
+      fs.existsSync(FIXTURE_WORKBOOK_PATH),
+      true,
+      `Synthetic fixture must exist at ${FIXTURE_WORKBOOK_PATH}`
+    );
+    // Production workbook remains gitignored under data/*.xlsx and is not required.
+    assert.doesNotMatch(FIXTURE_WORKBOOK_PATH, /[\\/]data[\\/].*\.xlsx$/i);
   });
 
   it('parses the workbook accurately and satisfies data rules', async () => {
-    const parsed = await parseHornbillWorkbook(workbookPath);
+    const parsed = await parseHornbillWorkbook(FIXTURE_WORKBOOK_PATH);
 
-    // Rule: Exactly 18 tribes parsed
-    assert.equal(parsed.tribes.length, 18, 'Must extract exactly 18 recognized tribes');
+    assert.equal(
+      parsed.tribes.length,
+      FIXTURE_TRIBE_COUNT,
+      `Synthetic fixture must extract exactly ${FIXTURE_TRIBE_COUNT} tribes`
+    );
 
     // Rule: Every tribe has status: "draft"
     for (const tribe of parsed.tribes) {
@@ -113,33 +130,55 @@ describe('Data Layer - Workbook Parser & Importer', () => {
       assert.ok(tribe.name.length > 0);
       assert.equal(tribe.metadata.sourceWorksheet, 'The 18 Tribes');
       assert.ok(tribe.metadata.sourceRow >= 2);
+      // Fixture intentionally leaves attire null — importer must not fabricate it.
+      assert.equal(tribe.traditionalAttire, null);
     }
 
     // Rule: Exclude Read Me and Missing Information sheets
     const skippedSheetNames = parsed.skippedSheets.map((s) => s.sheetName);
     assert.ok(skippedSheetNames.includes('Read Me'), 'Must skip Read Me sheet');
-    assert.ok(skippedSheetNames.includes('Missing Information'), 'Must skip Missing Information sheet');
+    assert.ok(
+      skippedSheetNames.includes('Missing Information'),
+      'Must skip Missing Information sheet'
+    );
 
-    // Morungs sheet produces 18 items (general overview + individual tribe morungs)
     const morungItems = parsed.knowledgeItems.filter((k) => k.category === 'morungs_overview');
     assert.equal(
       morungItems.length,
-      18,
-      'Morungs sheet must produce 18 morung knowledge items'
+      FIXTURE_MORUNG_COUNT,
+      `Morungs sheet must produce ${FIXTURE_MORUNG_COUNT} morung knowledge items in the fixture`
     );
 
     // Rule: All parsed records must have zero validation errors
     assert.equal(parsed.validationErrors.length, 0, 'No validation errors expected on workbook data');
 
-    // Rule: Total knowledge items parsed
-    assert.equal(parsed.knowledgeItems.length, 85, 'Must parse 85 knowledge items across content sheets');
+    assert.equal(
+      parsed.knowledgeItems.length,
+      FIXTURE_KNOWLEDGE_ITEM_COUNT,
+      `Must parse ${FIXTURE_KNOWLEDGE_ITEM_COUNT} knowledge items across fixture content sheets`
+    );
+
+    // Confirm categorized sheets were actually ingested (not bypassed).
+    const categories = new Set(parsed.knowledgeItems.map((k) => k.category));
+    for (const required of [
+      'morungs_overview',
+      'festival_overview',
+      'geography_basics',
+      'flora_nature',
+      'adventure_trekking',
+      'handicrafts_handlooms',
+      'music_instruments',
+      'kisama_heritage',
+    ] as const) {
+      assert.ok(categories.has(required), `Expected category ${required} from fixture`);
+    }
   });
 
   it('runs dry-run import without writing to database', async () => {
-    const parsed = await parseHornbillWorkbook(workbookPath);
+    const parsed = await parseHornbillWorkbook(FIXTURE_WORKBOOK_PATH);
     const report = await executeImport(parsed, null, {
       dryRun: true,
-      filePath: workbookPath,
+      filePath: FIXTURE_WORKBOOK_PATH,
     });
 
     assert.equal(report.isDryRun, true);
@@ -147,8 +186,8 @@ describe('Data Layer - Workbook Parser & Importer', () => {
     assert.equal(report.tribesStats.updated, 0);
     assert.equal(report.knowledgeItemsStats.inserted, 0);
     assert.equal(report.knowledgeItemsStats.updated, 0);
-    assert.equal(report.tribesStats.toInsert, 18);
-    assert.equal(report.knowledgeItemsStats.toInsert, 85);
-    assert.equal(report.totalParsedRows, 103);
+    assert.equal(report.tribesStats.toInsert, FIXTURE_TRIBE_COUNT);
+    assert.equal(report.knowledgeItemsStats.toInsert, FIXTURE_KNOWLEDGE_ITEM_COUNT);
+    assert.equal(report.totalParsedRows, FIXTURE_TOTAL_PARSED_ROWS);
   });
 });

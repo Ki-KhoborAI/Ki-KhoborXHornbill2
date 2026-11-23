@@ -1,17 +1,9 @@
-import dns from "node:dns";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
 // Load environment variables (.env.local first, then .env)
 dotenv.config({ path: ".env.local" });
 dotenv.config();
-
-// Configure reliable DNS servers for external API resolution on Windows
-try {
-  dns.setServers(["8.8.8.8", "1.1.1.1"]);
-} catch {
-  // Ignore in restricted network environments
-}
 
 /**
  * Default Gemini model constant.
