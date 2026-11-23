@@ -25,17 +25,21 @@ type Props = {
   location?: Location;
   suggestions: string[];
   embedded?: boolean;
+  initialQuestion?: string;
 };
 
 export default function KiKhoborConversation({
   location,
   suggestions,
   embedded = false,
+  initialQuestion,
 }: Props) {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const askQuestionRef = useRef<(value: string) => Promise<void>>(async () => {});
+  const didAutoAsk = useRef(false);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -103,7 +107,18 @@ export default function KiKhoborConversation({
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, location]);
+  }, [isLoading, location, messages]);
+
+  useEffect(() => {
+    askQuestionRef.current = askQuestion;
+  }, [askQuestion]);
+
+  useEffect(() => {
+    const trimmed = initialQuestion?.trim();
+    if (!trimmed || didAutoAsk.current) return;
+    didAutoAsk.current = true;
+    void askQuestionRef.current(trimmed);
+  }, [initialQuestion]);
 
   return (
     <>

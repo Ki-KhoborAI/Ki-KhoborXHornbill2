@@ -14,6 +14,7 @@ const suggestions = [
 export default function AskClient() {
   const searchParams = useSearchParams();
   const locationId = searchParams.get("location");
+  const initialQuestion = searchParams.get("question") ?? undefined;
   const location = locationId ? locations[locationId.toLowerCase()] : undefined;
   const contextualQuestions = location?.questions?.filter((item) => item !== "Explore other Morungs");
   const visibleSuggestions = contextualQuestions?.length ? contextualQuestions : suggestions;
@@ -28,7 +29,11 @@ export default function AskClient() {
         </div>
         {location && <div className="px-4 pb-2 text-xs text-neutral-400 sm:px-6">Exploring: <span className="font-medium text-white">{location.name}</span></div>}
       </div>
-      <KiKhoborConversation location={location} suggestions={visibleSuggestions} />
+      <KiKhoborConversation
+        location={location}
+        suggestions={visibleSuggestions}
+        initialQuestion={initialQuestion}
+      />
       <div aria-hidden="true" className="h-[calc(64px+env(safe-area-inset-bottom))] shrink-0 bg-black" />
     </main>
   );
