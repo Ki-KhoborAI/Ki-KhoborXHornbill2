@@ -81,7 +81,7 @@ export default function EventsPage() {
         <p className="mt-6 max-w-xl text-sm leading-7 text-white/55 sm:text-base">
           From cultural performances to traditional Morungs, discover
           the experiences that make Hornbill Festival a celebration
-          of Nagaland's living cultures.
+          of Nagaland&apos;s living cultures.
         </p>
 
         <div className="mt-10 inline-flex items-center gap-2 border border-white/20 px-3 py-2">

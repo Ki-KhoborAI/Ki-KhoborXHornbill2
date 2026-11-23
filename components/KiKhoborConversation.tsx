@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Location } from "../data/locations";
 import {
   createAskRequestContext,
@@ -45,7 +45,9 @@ export default function KiKhoborConversation({
     return () => cancelAnimationFrame(frame);
   }, [messages]);
 
-  const askQuestion = useCallback(async (value: string) => {
+  // Plain function (not useCallback): always closes over the latest messages,
+  // and avoids React Compiler conflicts with manual memoization deps.
+  async function askQuestion(value: string) {
     const trimmed = value.trim();
     if (!trimmed || isLoading) return;
 
@@ -103,7 +105,7 @@ export default function KiKhoborConversation({
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, location]);
+  }
 
   return (
     <>

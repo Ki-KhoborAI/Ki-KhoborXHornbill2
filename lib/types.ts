@@ -64,6 +64,61 @@ export type RetrievedRecord = {
 };
 
 /**
+ * Bundled offline knowledge item (`data/knowledgeBase.json`).
+ * Distinct from the importer's MongoDB `KnowledgeItem` schema type.
+ */
+export type LocalKnowledgeItem = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  category: string;
+  content: string | null;
+  attributes: Record<string, unknown>;
+  source: string | null;
+};
+
+/**
+ * Dual-shape tribe record used by formatters and offline search:
+ * - Flat Atlas `tribes` collection documents
+ * - Local knowledge items with tribe fields under `attributes`
+ *
+ * Index signature keeps MongoDB `Document` assignable (avoids weak-type
+ * rejection when all known fields are optional) without call-site casts.
+ */
+export type TribeLike = {
+  name?: string | null;
+  slug?: string | null;
+  id?: string | null;
+  title?: string | null;
+  source?: string | null;
+  regionOrDistricts?: string | null;
+  traditionalFestivalName?: string | null;
+  festivalDateOrSeason?: string | null;
+  traditions?: string | null;
+  traditionalAttire?: string | null;
+  culturalSignificance?: string | null;
+  attributes?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+/** Narrow an unknown attribute / JSON value to a string. */
+export function asString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * Prefer a flat tribe field, then a string attribute under the same key.
+ * Preserves the historical `flat || attributes[key]` truthiness behaviour.
+ */
+export function tribeString(
+  flat: string | null | undefined,
+  attributes: Record<string, unknown> | undefined,
+  key: string
+): string | undefined {
+  return flat || asString(attributes?.[key]);
+}
+
+/**
  * What a retriever returns to the orchestrator.
  *
  * - `structured_response`: Fully formatted answer — no Gemini synthesis needed.

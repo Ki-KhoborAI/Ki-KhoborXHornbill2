@@ -33,6 +33,33 @@ const MAX_REQUESTS_PER_WINDOW = 10;
 /** Timeout in milliseconds for Gemini API calls */
 const GEMINI_TIMEOUT_MS = 15000; // 15 seconds
 
+function readErrorField(error: unknown, key: string): unknown {
+  if (typeof error !== "object" || error === null) return undefined;
+  if (!(key in error)) return undefined;
+  return Reflect.get(error, key);
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  const message = readErrorField(error, "message");
+  return typeof message === "string" ? message : "";
+}
+
+/** Detect Gemini / upstream rate-limit and quota exhaustion shapes. */
+function isRateLimitError(error: unknown): boolean {
+  const status = readErrorField(error, "status");
+  const code = readErrorField(error, "code");
+  const message = getErrorMessage(error);
+
+  return (
+    status === 429 ||
+    code === 429 ||
+    message.includes("429") ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.toLowerCase().includes("quota")
+  );
+}
+
 function getClientIp(req: Request): string {
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) {
@@ -167,16 +194,9 @@ ${trimmedQuestion}`;
     });
 
     return NextResponse.json({ answer, sources });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Check for rate limit or quota errors (429 / RESOURCE_EXHAUSTED)
-    const isRateLimit =
-      error?.status === 429 ||
-      error?.code === 429 ||
-      String(error?.message || "").includes("429") ||
-      String(error?.message || "").includes("RESOURCE_EXHAUSTED") ||
-      String(error?.message || "").toLowerCase().includes("quota");
-
-    if (isRateLimit) {
+    if (isRateLimitError(error)) {
       return NextResponse.json(
         { error: "The assistant is busy right now. Please try again in a minute." },
         { status: 429 }
@@ -185,7 +205,10 @@ ${trimmedQuestion}`;
 
     // Log the real error on the server side only (including timeouts and upstream errors);
     // never leak raw Gemini errors, timeouts, or stack traces to the client
-    console.error("[Gemini Assistant Server Error]:", error?.message || error);
+    console.error(
+      "[Gemini Assistant Server Error]:",
+      getErrorMessage(error) || error
+    );
 
     return NextResponse.json(
       { error: "The assistant is temporarily unavailable. Please try again later." },

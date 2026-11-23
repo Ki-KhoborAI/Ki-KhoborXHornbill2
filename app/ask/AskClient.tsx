@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { locations } from "../../data/locations";
 import {
   createAskRequestContext,
@@ -69,86 +69,85 @@ export default function AskClient() {
     return () => cancelAnimationFrame(frame);
   }, [messages]);
 
-  const askQuestion = useCallback(
-    async (value: string) => {
-      const trimmed = value.trim();
-      if (!trimmed || isLoading) return;
+  // Plain function (not useCallback): always closes over the latest messages,
+  // and avoids React Compiler conflicts with manual memoization deps.
+  async function askQuestion(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed || isLoading) return;
 
-      const requestContext = createAskRequestContext(trimmed, location);
-      logAskRequestContext(requestContext);
+    const requestContext = createAskRequestContext(trimmed, location);
+    logAskRequestContext(requestContext);
 
-      // Add user message and temporary searching indicator
+    // Add user message and temporary searching indicator
+    setMessages((previous) => [
+      ...previous,
+      { role: "user", text: trimmed, requestContext },
+      {
+        role: "assistant",
+        text: "Searching Hornbill & Nagaland knowledge...",
+        isSearching: true,
+      },
+    ]);
+
+    setQuestion("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: trimmed,
+          activeLocationId: location?.id ?? null,
+          activeTribe: location?.tribeName ?? null,
+          conversationHistory: messages
+            .filter((m) => m.role === "user" || m.role === "assistant")
+            .map((m) => ({ role: m.role, text: m.text }))
+            .slice(-4),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
       setMessages((previous) => [
-        ...previous,
-        { role: "user", text: trimmed, requestContext },
+        ...previous.filter((m) => !m.isSearching),
         {
           role: "assistant",
-          text: "Searching Hornbill & Nagaland knowledge...",
-          isSearching: true,
+          text: data.answer,
+          title: data.title,
+          category: data.category,
+          source: data.source,
+          relatedItems: data.relatedItems,
         },
       ]);
+    } catch (err) {
+      console.warn("[AskClient] Remote search failed, falling back to local dataset:", err);
+      // Fallback to client-side bundled knowledge base
+      const localResult = searchKnowledge(
+        trimmed,
+        location?.id ?? null,
+        location?.tribeName ?? null
+      );
 
-      setQuestion("");
-      setIsLoading(true);
-
-      try {
-        const response = await fetch("/api/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            question: trimmed,
-            activeLocationId: location?.id ?? null,
-            activeTribe: location?.tribeName ?? null,
-            conversationHistory: messages
-              .filter((m) => m.role === "user" || m.role === "assistant")
-              .map((m) => ({ role: m.role, text: m.text }))
-              .slice(-4),
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`API responded with status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        setMessages((previous) => [
-          ...previous.filter((m) => !m.isSearching),
-          {
-            role: "assistant",
-            text: data.answer,
-            title: data.title,
-            category: data.category,
-            source: data.source,
-            relatedItems: data.relatedItems,
-          },
-        ]);
-      } catch (err) {
-        console.warn("[AskClient] Remote search failed, falling back to local dataset:", err);
-        // Fallback to client-side bundled knowledge base
-        const localResult = searchKnowledge(
-          trimmed,
-          location?.id ?? null,
-          location?.tribeName ?? null
-        );
-
-        setMessages((previous) => [
-          ...previous.filter((m) => !m.isSearching),
-          {
-            role: "assistant",
-            text: localResult.answer,
-            title: localResult.title,
-            category: localResult.category,
-            source: localResult.source,
-            relatedItems: localResult.relatedItems,
-          },
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [location, isLoading]
-  );
+      setMessages((previous) => [
+        ...previous.filter((m) => !m.isSearching),
+        {
+          role: "assistant",
+          text: localResult.answer,
+          title: localResult.title,
+          category: localResult.category,
+          source: localResult.source,
+          relatedItems: localResult.relatedItems,
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <main className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-black text-white">

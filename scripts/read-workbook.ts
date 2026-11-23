@@ -5,6 +5,7 @@
 import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
+import { extractCellValue } from '../lib/importer/importer.js';
 
 const WORKBOOK_PATH = path.resolve('data', 'Ki-Khobor_Hornbill_2026_People_Culture_Extracted.xlsx');
 
@@ -19,37 +20,18 @@ const TARGET_SHEETS = [
   'Missing Information',
 ];
 
-function extractCellValue(val: ExcelJS.CellValue): string | null {
-  if (val === null || val === undefined) return null;
-  if (typeof val === 'string') {
-    const trimmed = val.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
-  if (val instanceof Date) return val.toISOString();
-  if (typeof val === 'object') {
-    if ('richText' in val && Array.isArray((val as any).richText)) {
-      const text = (val as any).richText.map((rt: any) => rt.text).join('').trim();
-      return text.length > 0 ? text : null;
-    }
-    if ('text' in val && typeof (val as any).text === 'string') {
-      const text = (val as any).text.trim();
-      return text.length > 0 ? text : null;
-    }
-    if ('result' in val && (val as any).result !== undefined) {
-      const text = String((val as any).result).trim();
-      return text.length > 0 ? text : null;
-    }
-    return JSON.stringify(val);
-  }
-  return null;
-}
+/** One worksheet dump written to workbook_raw_dump.json */
+type SheetDump = {
+  headers: string[];
+  rowCount: number;
+  rows: Record<string, string | null>[];
+};
 
 async function main() {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(WORKBOOK_PATH);
 
-  const result: Record<string, any> = {};
+  const result: Record<string, SheetDump> = {};
 
   for (const worksheet of workbook.worksheets) {
     const name = worksheet.name;
@@ -94,8 +76,8 @@ async function main() {
   // Print summary
   for (const [sheet, data] of Object.entries(result)) {
     console.log(`\n=== ${sheet} ===`);
-    console.log(`Headers: ${(data as any).headers.join(' | ')}`);
-    console.log(`Data rows: ${(data as any).rowCount}`);
+    console.log(`Headers: ${data.headers.join(' | ')}`);
+    console.log(`Data rows: ${data.rowCount}`);
   }
 }
 

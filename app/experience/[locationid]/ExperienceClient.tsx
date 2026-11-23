@@ -70,12 +70,8 @@ export default function ExperienceClient({
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const hasSubmittedRef = useRef(false);
 
-  useEffect(() => {
-    setQuestion("");
-    setSubmittedRequests([]);
-    hasSubmittedRef.current = false;
-  }, [id]);
-
+  // Location changes remount this component via key={id} on the parent page,
+  // so ask preview state resets without a setState-in-effect cycle.
   useEffect(() => {
     if (!hasSubmittedRef.current) return;
 

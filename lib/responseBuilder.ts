@@ -1,5 +1,12 @@
 import { ai, GEMINI_MODEL } from "./gemini";
-import type { AssistantResponse, ConversationTurn, RetrievedRecord } from "./types";
+import {
+  asString,
+  tribeString,
+  type AssistantResponse,
+  type ConversationTurn,
+  type RetrievedRecord,
+  type TribeLike,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Controlled responses (Zero DB / Zero hallucination)
@@ -197,18 +204,19 @@ export function detectTribeSubCategory(query: string): TribeSubCategory {
 }
 
 export function formatTribeResponse(
-  tribe: Record<string, any>,
+  tribe: TribeLike,
   subCategory: TribeSubCategory,
   sourceProvider: "atlas" | "local" = "atlas"
 ): AssistantResponse {
-  const tribeName = tribe.name || tribe.attributes?.tribeName || "Tribe";
+  const attrs = tribe.attributes;
+  const tribeName = tribeString(tribe.name, attrs, "tribeName") || "Tribe";
   const slug = tribe.slug || tribe.id?.replace(/^tribe-/, "") || "";
-  const region = tribe.regionOrDistricts || tribe.attributes?.regionOrDistricts;
-  const festName = tribe.traditionalFestivalName || tribe.attributes?.traditionalFestivalName;
-  const festDate = tribe.festivalDateOrSeason || tribe.attributes?.festivalDateOrSeason;
-  const traditions = tribe.traditions || tribe.attributes?.traditions;
-  const attire = tribe.traditionalAttire || tribe.attributes?.traditionalAttire;
-  const significance = tribe.culturalSignificance || tribe.attributes?.culturalSignificance;
+  const region = tribeString(tribe.regionOrDistricts, attrs, "regionOrDistricts");
+  const festName = tribeString(tribe.traditionalFestivalName, attrs, "traditionalFestivalName");
+  const festDate = tribeString(tribe.festivalDateOrSeason, attrs, "festivalDateOrSeason");
+  const traditions = tribeString(tribe.traditions, attrs, "traditions");
+  const attire = tribeString(tribe.traditionalAttire, attrs, "traditionalAttire");
+  const significance = tribeString(tribe.culturalSignificance, attrs, "culturalSignificance");
   const source = tribe.source || "Hornbill Festival Official Handbook";
 
   let title = `${tribeName} Tribe`;
@@ -295,13 +303,17 @@ export function formatTribeResponse(
 }
 
 export function formatTribeAggregateResponse(
-  tribes: Array<Record<string, any>>,
+  tribes: TribeLike[],
   intent: "count" | "list",
   sourceProvider: "atlas" | "local" = "atlas"
 ): AssistantResponse {
   const count = tribes.length;
-  const cleanName = (t: Record<string, any>) =>
-    t.name || t.attributes?.tribeName || t.title?.replace(/\s+Tribe$/i, "") || t.slug;
+  const cleanName = (t: TribeLike) =>
+    t.name ||
+    asString(t.attributes?.tribeName) ||
+    t.title?.replace(/\s+Tribe$/i, "") ||
+    t.slug ||
+    "";
 
   const sorted = [...tribes].sort((a, b) => cleanName(a).localeCompare(cleanName(b)));
   const numberedList = sorted
