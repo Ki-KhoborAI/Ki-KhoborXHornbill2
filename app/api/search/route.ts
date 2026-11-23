@@ -1,3 +1,4 @@
+import type { Document, Filter } from "mongodb";
 import { NextResponse } from "next/server";
 import { getDatabase } from "../../../lib/db";
 
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
     const kiCol = db.collection("knowledge_items");
     const tribesCol = db.collection("tribes");
 
-    const filter: Record<string, any> = {};
+    const filter: Filter<Document> = {};
     if (category) {
       filter.category = category;
     }
@@ -71,4 +72,3 @@ export async function GET(req: Request) {
     );
   }
 }
-

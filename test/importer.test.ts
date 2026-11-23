@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import fs from 'node:fs';
+import type { CellRichTextValue } from 'exceljs';
 import { parseHornbillWorkbook, executeImport, extractCellValue } from '../lib/importer/importer.js';
 import { TribeSchema, KnowledgeItemSchema, slugify } from '../lib/importer/schemas.js';
 
@@ -82,7 +83,7 @@ describe('Data Layer - Schemas & Slugification', () => {
     assert.equal(extractCellValue(12345), '12345');
     assert.equal(extractCellValue(true), 'true');
     assert.equal(
-      extractCellValue({ richText: [{ text: 'Part 1 ' }, { text: 'Part 2' }] } as any),
+      extractCellValue({ richText: [{ text: 'Part 1 ' }, { text: 'Part 2' }] } as CellRichTextValue),
       'Part 1 Part 2'
     );
   });

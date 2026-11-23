@@ -85,7 +85,7 @@ async function main() {
   const alreadyExisting: string[] = [];
   const conflicts: string[] = [];
 
-  for (const { filename, category, worksheet } of FILE_MAP) {
+  for (const { filename, worksheet } of FILE_MAP) {
     const filePath = path.join(GEN_DIR, filename);
     if (!fs.existsSync(filePath)) {
       console.error(`  MISSING FILE: ${filename}`);

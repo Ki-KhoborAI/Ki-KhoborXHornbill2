@@ -2,9 +2,30 @@ import { NextResponse } from "next/server";
 import { orchestrateMessage } from "../../../lib/orchestrator";
 import type { ConversationTurn } from "../../../lib/types";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isConversationTurn(value: unknown): value is ConversationTurn {
+  if (!isRecord(value)) return false;
+  const role = value.role;
+  const text = value.text;
+  return (
+    (role === "user" || role === "assistant") && typeof text === "string"
+  );
+}
+
+/** Narrow optional context fields to the orchestrator contract. */
+function optionalContextField(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === "string") return value;
+  return undefined;
+}
+
 export async function POST(req: Request) {
   try {
-    let body: any;
+    let body: unknown;
     try {
       body = await req.json();
     } catch {
@@ -14,7 +35,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { question, activeLocationId, activeTribe, conversationHistory } = body || {};
+    const payload = isRecord(body) ? body : {};
+    const { question, activeLocationId, activeTribe, conversationHistory } =
+      payload;
 
     if (!question || typeof question !== "string") {
       return NextResponse.json(
@@ -33,21 +56,14 @@ export async function POST(req: Request) {
 
     // Sanitize conversationHistory to ensure expected format (last 4 messages / 2 turns)
     const validHistory: ConversationTurn[] = Array.isArray(conversationHistory)
-      ? conversationHistory
-          .filter(
-            (turn: any) =>
-              turn &&
-              (turn.role === "user" || turn.role === "assistant") &&
-              typeof turn.text === "string"
-          )
-          .slice(-4)
+      ? conversationHistory.filter(isConversationTurn).slice(-4)
       : [];
 
     const response = await orchestrateMessage({
       question: trimmedQuestion,
       conversationHistory: validHistory,
-      activeLocationId,
-      activeTribe,
+      activeLocationId: optionalContextField(activeLocationId),
+      activeTribe: optionalContextField(activeTribe),
     });
 
     return NextResponse.json(response);

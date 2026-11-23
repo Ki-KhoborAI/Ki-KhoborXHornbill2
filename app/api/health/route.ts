@@ -10,7 +10,7 @@ export async function GET() {
       { status: "ok", database: "connected" },
       { status: 200 }
     );
-  } catch (error) {
+  } catch {
     // Log minimal message on the server only without leaking credentials or internal error details
     console.warn("MongoDB Atlas health check ping failed");
     return NextResponse.json(
