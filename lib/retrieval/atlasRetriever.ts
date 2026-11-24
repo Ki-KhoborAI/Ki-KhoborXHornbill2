@@ -4,6 +4,7 @@ import {
   formatTribeAggregateResponse,
   formatTribeResponse,
 } from "../responseBuilder";
+import { festivalDateContextScoreAdjustment } from "../knowledgeQuality";
 import type { IntentClass, RetrievalOutcome, RetrievedRecord } from "../types";
 import { evaluateRetrievalRelevance } from "./relevanceEvaluator";
 
@@ -32,6 +33,17 @@ export interface RetrieveParams {
   activeLocationId?: string | null;
   activeTribe?: string | null;
 }
+
+/** Shape of knowledge_items documents used by Atlas scoring (fields actually read). */
+type AtlasKnowledgeDoc = {
+  _id?: unknown;
+  slug?: string;
+  title: string;
+  category?: string;
+  content?: string | null;
+  attributes?: Record<string, unknown>;
+  source?: string | null;
+};
 
 export async function retrieveFromAtlas(params: RetrieveParams): Promise<RetrievalOutcome> {
   const { query, intent, tribeSlug, activeLocationId, activeTribe } = params;
@@ -75,9 +87,9 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
     }
   }
 
-  const items = await kiCol.find({}).toArray();
+  const items = (await kiCol.find({}).toArray()) as AtlasKnowledgeDoc[];
 
-  const scored = items.map((item: any) => {
+  const scored = items.map((item) => {
     let score = 0;
     const t = (item.title || "").toLowerCase();
     const c = (item.content || "").toLowerCase();
@@ -111,6 +123,13 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
     ) {
       if (slug.includes("date") || t.includes("date")) score += 140;
       if (slug.includes("timing") || t.includes("timing")) score += 100;
+      score += festivalDateContextScoreAdjustment({
+        id: slug || item.title || "",
+        title: item.title || "",
+        category: item.category,
+        queryLower: qLower,
+        attributes: item.attributes,
+      });
     }
 
     if (rawTokens.includes("who") || rawTokens.includes("organizer") || rawTokens.includes("organises") || rawTokens.includes("organized")) {
@@ -197,7 +216,7 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
     return { item, score };
   });
 
-  scored.sort((a: any, b: any) => b.score - a.score);
+  scored.sort((a, b) => b.score - a.score);
   const topMatch = scored[0];
 
   if (!topMatch || topMatch.score <= 0) {
@@ -205,9 +224,9 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
   }
 
   const records: RetrievedRecord[] = scored
-    .filter((s: any) => s.score > 0)
+    .filter((s) => s.score > 0)
     .slice(0, 4)
-    .map((s: any) => ({
+    .map((s) => ({
       id: s.item.slug || String(s.item._id),
       title: s.item.title,
       category: s.item.category || "General",

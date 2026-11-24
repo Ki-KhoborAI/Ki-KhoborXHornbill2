@@ -22,12 +22,59 @@ const FILES = [
   { filename: 'hornbill_kisama.json',       label: 'Hornbill & Kisama      (kisama_heritage)' },
 ];
 
+/** Provenance metadata as stored in generated JSON (ISO date strings). */
+type KnowledgeItemJsonMetadata = {
+  sourceWorkbook: string;
+  sourceWorksheet: string;
+  sourceRow: number;
+  importedAt: string;
+  rawSourceStatus?: string | null;
+  sourceCitation?: string | null;
+  notes?: string | null;
+  originalHeaders?: Record<string, unknown>;
+};
+
+/** Knowledge item document shape in data/generated/*.json before Date rehydration. */
+type KnowledgeItemJson = {
+  slug: string;
+  category: string;
+  title: string;
+  subtitle?: string | null;
+  content: string | null;
+  attributes: Record<string, unknown>;
+  source: string | null;
+  status: string;
+  metadata: KnowledgeItemJsonMetadata;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Same document after ISO strings are converted to Date for MongoDB upsert. */
+type KnowledgeItemDocument = Omit<KnowledgeItemJson, 'createdAt' | 'updatedAt' | 'metadata'> & {
+  createdAt: Date;
+  updatedAt: Date;
+  metadata: Omit<KnowledgeItemJsonMetadata, 'importedAt'> & { importedAt: Date };
+};
+
+function isKnowledgeItemJson(value: unknown): value is KnowledgeItemJson {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('slug' in value) || typeof value.slug !== 'string') return false;
+  if (!('createdAt' in value) || typeof value.createdAt !== 'string') return false;
+  if (!('updatedAt' in value) || typeof value.updatedAt !== 'string') return false;
+  if (!('metadata' in value) || typeof value.metadata !== 'object' || value.metadata === null) {
+    return false;
+  }
+  return (
+    'importedAt' in value.metadata && typeof value.metadata.importedAt === 'string'
+  );
+}
+
 /** Re-hydrate ISO date strings into native Date objects */
-function rehydrateDates(doc: Record<string, any>): Record<string, any> {
+function rehydrateDates(doc: KnowledgeItemJson): KnowledgeItemDocument {
   return {
     ...doc,
-    createdAt:  new Date(doc.createdAt),
-    updatedAt:  new Date(doc.updatedAt),
+    createdAt: new Date(doc.createdAt),
+    updatedAt: new Date(doc.updatedAt),
     metadata: {
       ...doc.metadata,
       importedAt: new Date(doc.metadata.importedAt),
@@ -63,7 +110,13 @@ async function main() {
       continue;
     }
 
-    const raw: Record<string, any>[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (!Array.isArray(parsed) || !parsed.every(isKnowledgeItemJson)) {
+      console.error(`❌ Invalid knowledge item JSON shape: ${filename}`);
+      grandErrors++;
+      continue;
+    }
+    const raw: KnowledgeItemJson[] = parsed;
     const docs = raw.map(rehydrateDates);
 
     let inserted = 0, updated = 0, skipped = 0, errors = 0;

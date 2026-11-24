@@ -39,6 +39,7 @@ export type Location = {
   id: string;
   name: string;
   tribeName?: string;
+  tribeIntroduction?: string;
   category?: string;
   description?: string;
   image?: string | null;
@@ -94,6 +95,7 @@ function createMorung(id: string, tribeName: string): Location {
     questions: [
       `What verified information is available about the ${tribeName} Morung?`,
       "What can I see at this Morung?",
+      `Tell me something about the ${tribeName} people.`,
       "What is happening at Hornbill?",
       "Explore other Morungs",
     ],
@@ -113,9 +115,17 @@ function createMorung(id: string, tribeName: string): Location {
 export const targetMorungCount = 17;
 
 export const locations: Record<string, Location> = {
-  angami: createMorung("angami", "Angami"),
+  angami: {
+    ...createMorung("angami", "Angami"),
+    image: "/images/morungs/angami-card.jpg",
+    tribeIntroduction:
+      "The Angami are one of Nagaland’s major Naga tribes, with their own distinct language, traditions and cultural celebrations. Their principal festival, Sekrenyi, is associated with purification, renewal, feasting and song.",
+  },
   ao: createMorung("ao", "Ao"),
-  chakhesang: createMorung("chakhesang", "Chakhesang"),
+  chakhesang: {
+    ...createMorung("chakhesang", "Chakhesang"),
+    image: "/images/morungs/chakhesang-card.jpg",
+  },
   chang: createMorung("chang", "Chang"),
   khiamniungan: createMorung("khiamniungan", "Khiamniungan"),
   konyak: createMorung("konyak", "Konyak"),
@@ -123,6 +133,8 @@ export const locations: Record<string, Location> = {
   kachari: createMorung("kachari", "Kachari"),
   lotha: createMorung("lotha", "Lotha"),
   phom: createMorung("phom", "Phom"),
+  // The supplied Pochury file duplicates the Chakhesang photograph; keep the
+  // Pochury image unset until a correctly mapped photograph is available.
   pochury: createMorung("pochury", "Pochury"),
   rengma: createMorung("rengma", "Rengma"),
   sangtam: createMorung("sangtam", "Sangtam"),

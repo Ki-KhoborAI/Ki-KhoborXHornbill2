@@ -34,7 +34,9 @@ async function ExperiencePageContent({
     notFound();
   }
 
-  return <ExperienceClient locationId={id} />;
+  // key forces a clean remount when navigating between Morungs so ask
+  // preview state does not leak across locations (replaces a reset effect).
+  return <ExperienceClient key={id} locationId={id} />;
 }
 
 function ExperienceLoading() {

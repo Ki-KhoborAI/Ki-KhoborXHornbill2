@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
-import { ai, GEMINI_MODEL } from "../../../lib/gemini";
+import {
+  parseAssistantRequestBody,
+  readJsonBodyWithLimit,
+} from "../../../lib/apiRequestValidation";
+import {
+  GeminiConfigError,
+  GEMINI_MODEL,
+  getGeminiClient,
+  isGeminiConfigured,
+} from "../../../lib/gemini";
 import { retrieveContext, type SourceRef } from "../../../lib/ragRetrieval";
+import { enforceAiRateLimit } from "../../../lib/rateLimit";
 
 interface CacheEntry {
   answer: string;
@@ -15,99 +25,59 @@ interface CacheEntry {
 const questionCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-interface RateLimitRecord {
-  count: number;
-  resetAt: number;
-}
-
-/**
- * In-memory per-IP rate limit (10 requests per minute).
- * Note: This in-memory implementation is intended for development and single-instance environments.
- * In production across multiple serverless functions or distributed containers, a shared store
- * (such as Redis or MongoDB) should be used.
- */
-const ipRateLimitMap = new Map<string, RateLimitRecord>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10;
-
 /** Timeout in milliseconds for Gemini API calls */
 const GEMINI_TIMEOUT_MS = 15000; // 15 seconds
 
-function getClientIp(req: Request): string {
-  const forwardedFor = req.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0].trim();
-  }
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
-  }
-  return "127.0.0.1";
+function readErrorField(error: unknown, key: string): unknown {
+  if (typeof error !== "object" || error === null) return undefined;
+  if (!(key in error)) return undefined;
+  return Reflect.get(error, key);
 }
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = ipRateLimitMap.get(ip);
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  const message = readErrorField(error, "message");
+  return typeof message === "string" ? message : "";
+}
 
-  if (!record || now >= record.resetAt) {
-    ipRateLimitMap.set(ip, {
-      count: 1,
-      resetAt: now + RATE_LIMIT_WINDOW_MS,
-    });
-    return true;
-  }
+/** Detect Gemini / upstream rate-limit and quota exhaustion shapes. */
+function isRateLimitError(error: unknown): boolean {
+  const status = readErrorField(error, "status");
+  const code = readErrorField(error, "code");
+  const message = getErrorMessage(error);
 
-  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
-    return false;
-  }
-
-  record.count += 1;
-  return true;
+  return (
+    status === 429 ||
+    code === 429 ||
+    message.includes("429") ||
+    message.includes("RESOURCE_EXHAUSTED") ||
+    message.toLowerCase().includes("quota")
+  );
 }
 
 export async function POST(req: Request) {
   try {
-    // 1. Per-IP Rate Limiting (10 req/min)
-    const clientIp = getClientIp(req);
-    const isAllowed = checkRateLimit(clientIp);
-
-    if (!isAllowed) {
-      return NextResponse.json(
-        { error: "The assistant is busy right now. Please try again in a minute." },
-        { status: 429 }
-      );
-    }
+    // 1. Shared Redis rate limit (ask + assistant share one budget per IP)
+    const rateLimited = await enforceAiRateLimit(req);
+    if (rateLimited) return rateLimited;
 
     // 2. Parse and Validate Request Body
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid JSON in request body." },
-        { status: 400 }
-      );
-    }
+    const bodyResult = await readJsonBodyWithLimit(req);
+    if (!bodyResult.ok) return bodyResult.response;
 
-    if (
-      !body ||
-      typeof body !== "object" ||
-      !("question" in body) ||
-      typeof (body as { question: unknown }).question !== "string"
-    ) {
-      return NextResponse.json(
-        { error: "Question must be a non-empty string with a maximum of 500 characters." },
-        { status: 400 }
-      );
-    }
+    const parsed = parseAssistantRequestBody(bodyResult.body);
+    if (!parsed.ok) return parsed.response;
 
-    const rawQuestion = (body as { question: string }).question;
-    const trimmedQuestion = rawQuestion.trim();
+    const trimmedQuestion = parsed.data.question;
 
-    if (trimmedQuestion.length === 0 || rawQuestion.length > 500) {
+    if (!isGeminiConfigured()) {
+      console.error("[Gemini Assistant] Missing GEMINI_API_KEY");
       return NextResponse.json(
-        { error: "Question must be a non-empty string with a maximum of 500 characters." },
-        { status: 400 }
+        {
+          error:
+            "The assistant is temporarily unavailable. Please try again later.",
+        },
+        { status: 503 }
       );
     }
 
@@ -144,7 +114,8 @@ USER QUESTION:
 ${trimmedQuestion}`;
 
     // 6. Call Gemini Model with 15-second timeout
-    const geminiCall = ai.models.generateContent({
+    const gemini = getGeminiClient();
+    const geminiCall = gemini.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
     });
@@ -167,16 +138,20 @@ ${trimmedQuestion}`;
     });
 
     return NextResponse.json({ answer, sources });
-  } catch (error: any) {
-    // Check for rate limit or quota errors (429 / RESOURCE_EXHAUSTED)
-    const isRateLimit =
-      error?.status === 429 ||
-      error?.code === 429 ||
-      String(error?.message || "").includes("429") ||
-      String(error?.message || "").includes("RESOURCE_EXHAUSTED") ||
-      String(error?.message || "").toLowerCase().includes("quota");
+  } catch (error: unknown) {
+    if (error instanceof GeminiConfigError) {
+      console.error("[Gemini Assistant Config Error]:", error.message);
+      return NextResponse.json(
+        {
+          error:
+            "The assistant is temporarily unavailable. Please try again later.",
+        },
+        { status: 503 }
+      );
+    }
 
-    if (isRateLimit) {
+    // Check for rate limit or quota errors (429 / RESOURCE_EXHAUSTED)
+    if (isRateLimitError(error)) {
       return NextResponse.json(
         { error: "The assistant is busy right now. Please try again in a minute." },
         { status: 429 }
@@ -185,7 +160,10 @@ ${trimmedQuestion}`;
 
     // Log the real error on the server side only (including timeouts and upstream errors);
     // never leak raw Gemini errors, timeouts, or stack traces to the client
-    console.error("[Gemini Assistant Server Error]:", error?.message || error);
+    console.error(
+      "[Gemini Assistant Server Error]:",
+      getErrorMessage(error) || error
+    );
 
     return NextResponse.json(
       { error: "The assistant is temporarily unavailable. Please try again later." },

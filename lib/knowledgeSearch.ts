@@ -1,21 +1,20 @@
 import knowledgeData from "../data/knowledgeBase.json";
+import {
+  asString,
+  tribeString,
+  type LocalKnowledgeItem,
+  type TribeLike,
+} from "./types";
 
-export type KnowledgeItem = {
-  id: string;
-  title: string;
-  subtitle: string | null;
-  category: string;
-  content: string | null;
-  attributes: Record<string, any>;
-  source: string | null;
-};
+/** Offline knowledge item — alias of the shared LocalKnowledgeItem type. */
+export type KnowledgeItem = LocalKnowledgeItem;
 
 export type SearchResponse = {
   answer: string;
   title?: string;
   category?: string;
   source?: string | null;
-  attributes?: Record<string, any>;
+  attributes?: Record<string, unknown>;
   relatedItems?: Array<{ id: string; title: string; category: string }>;
 };
 
@@ -206,14 +205,15 @@ function detectIndividualTribeIntent(qLower: string): {
   return { tribeSlug: matchedTribeSlug, subCategory: "overview" };
 }
 
-function formatTribeResponse(tribe: any, subCategory: string) {
-  const tribeName = tribe.name || tribe.attributes?.tribeName || "Tribe";
-  const region = tribe.regionOrDistricts || tribe.attributes?.regionOrDistricts;
-  const festName = tribe.traditionalFestivalName || tribe.attributes?.traditionalFestivalName;
-  const festDate = tribe.festivalDateOrSeason || tribe.attributes?.festivalDateOrSeason;
-  const traditions = tribe.traditions || tribe.attributes?.traditions;
-  const attire = tribe.traditionalAttire || tribe.attributes?.traditionalAttire;
-  const significance = tribe.culturalSignificance || tribe.attributes?.culturalSignificance;
+function formatTribeResponse(tribe: TribeLike, subCategory: string) {
+  const attrs = tribe.attributes;
+  const tribeName = tribeString(tribe.name, attrs, "tribeName") || "Tribe";
+  const region = tribeString(tribe.regionOrDistricts, attrs, "regionOrDistricts");
+  const festName = tribeString(tribe.traditionalFestivalName, attrs, "traditionalFestivalName");
+  const festDate = tribeString(tribe.festivalDateOrSeason, attrs, "festivalDateOrSeason");
+  const traditions = tribeString(tribe.traditions, attrs, "traditions");
+  const attire = tribeString(tribe.traditionalAttire, attrs, "traditionalAttire");
+  const significance = tribeString(tribe.culturalSignificance, attrs, "culturalSignificance");
   const source = tribe.source || "Hornbill Festival Official Handbook";
 
   switch (subCategory) {
@@ -536,7 +536,7 @@ export function searchKnowledge(
     tribes.sort((a, b) => a.title.localeCompare(b.title));
     const count = tribes.length;
     const cleanName = (t: KnowledgeItem) =>
-      (t.attributes?.tribeName as string) || t.title.replace(/\s+Tribe$/i, "");
+      asString(t.attributes?.tribeName) || t.title.replace(/\s+Tribe$/i, "");
     const numberedList = tribes
       .map((t, idx) => `${idx + 1}. ${cleanName(t)}`)
       .join("\n");
@@ -562,7 +562,7 @@ export function searchKnowledge(
       (it) =>
         it.category === "tribe_profile" &&
         (it.id === `tribe-${indIntent.tribeSlug}` ||
-          (it.attributes?.tribeName as string)?.toLowerCase() === indIntent.tribeSlug)
+          asString(it.attributes?.tribeName)?.toLowerCase() === indIntent.tribeSlug)
     );
     if (tribeItem) {
       const formatted = formatTribeResponse(tribeItem, indIntent.subCategory);
@@ -574,7 +574,7 @@ export function searchKnowledge(
         relatedItems: [
           {
             id: `morungs-overview-${indIntent.tribeSlug}-morung`,
-            title: `${tribeItem.attributes?.tribeName || tribeItem.title} Morung`,
+            title: `${asString(tribeItem.attributes?.tribeName) || tribeItem.title} Morung`,
             category: "morungs_overview",
           },
           {
@@ -733,13 +733,22 @@ export function searchKnowledge(
   const attr = primary.attributes;
   if (attr && Object.keys(attr).length > 0) {
     const extraDetails: string[] = [];
-    if (attr.regionOrDistricts) extraDetails.push(`• Region/Districts: ${attr.regionOrDistricts}`);
-    if (attr.traditionalFestivalName) extraDetails.push(`• Festival: ${attr.traditionalFestivalName}`);
-    if (attr.festivalDateOrSeason) extraDetails.push(`• Season/Date: ${attr.festivalDateOrSeason}`);
-    if (attr.architecturalFeatures) extraDetails.push(`• Architecture: ${attr.architecturalFeatures}`);
-    if (attr.traditionalObjectsOrDisplays) extraDetails.push(`• Traditional Displays: ${attr.traditionalObjectsOrDisplays}`);
-    if (attr.culturalSignificance && !answerText.includes(attr.culturalSignificance)) {
-      extraDetails.push(`• Significance: ${attr.culturalSignificance}`);
+    const regionOrDistricts = asString(attr.regionOrDistricts);
+    const traditionalFestivalName = asString(attr.traditionalFestivalName);
+    const festivalDateOrSeason = asString(attr.festivalDateOrSeason);
+    const architecturalFeatures = asString(attr.architecturalFeatures);
+    const traditionalObjectsOrDisplays = asString(attr.traditionalObjectsOrDisplays);
+    const culturalSignificance = asString(attr.culturalSignificance);
+
+    if (regionOrDistricts) extraDetails.push(`• Region/Districts: ${regionOrDistricts}`);
+    if (traditionalFestivalName) extraDetails.push(`• Festival: ${traditionalFestivalName}`);
+    if (festivalDateOrSeason) extraDetails.push(`• Season/Date: ${festivalDateOrSeason}`);
+    if (architecturalFeatures) extraDetails.push(`• Architecture: ${architecturalFeatures}`);
+    if (traditionalObjectsOrDisplays) {
+      extraDetails.push(`• Traditional Displays: ${traditionalObjectsOrDisplays}`);
+    }
+    if (culturalSignificance && !answerText.includes(culturalSignificance)) {
+      extraDetails.push(`• Significance: ${culturalSignificance}`);
     }
 
     if (extraDetails.length > 0 && primary.category === "tribe_profile") {

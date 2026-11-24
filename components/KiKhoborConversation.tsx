@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Location } from "../data/locations";
 import {
   createAskRequestContext,
@@ -24,18 +25,21 @@ type Props = {
   location?: Location;
   suggestions: string[];
   embedded?: boolean;
+  initialQuestion?: string;
 };
 
 export default function KiKhoborConversation({
   location,
   suggestions,
   embedded = false,
+  initialQuestion,
 }: Props) {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const askQuestionRef = useRef<(value: string) => Promise<void>>(async () => {});
+  const didAutoAsk = useRef(false);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -103,7 +107,18 @@ export default function KiKhoborConversation({
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, location]);
+  }, [isLoading, location, messages]);
+
+  useEffect(() => {
+    askQuestionRef.current = askQuestion;
+  }, [askQuestion]);
+
+  useEffect(() => {
+    const trimmed = initialQuestion?.trim();
+    if (!trimmed || didAutoAsk.current) return;
+    didAutoAsk.current = true;
+    void askQuestionRef.current(trimmed);
+  }, [initialQuestion]);
 
   return (
     <>
@@ -117,17 +132,28 @@ export default function KiKhoborConversation({
               {!embedded && <p className="mb-3 text-xs font-medium text-neutral-400">Suggested questions</p>}
               {embedded ? (
                 <div className="flex flex-wrap gap-2">
-                  {suggestions.slice(0, 3).map((suggestion) => (
+                {suggestions.map((suggestion) => (
+                  suggestion === "Explore other Morungs" ? (
+                    <Link key={suggestion} href="/explore" className="inline-flex min-h-11 items-center rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-left text-xs leading-5 text-neutral-200 transition hover:border-white/30 hover:bg-white/[0.08] hover:text-white">{suggestion} ↗</Link>
+                  ) : (
                     <button key={suggestion} type="button" onClick={() => askQuestion(suggestion)} className="min-h-11 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-left text-xs leading-5 text-neutral-200 transition hover:border-white/30 hover:bg-white/[0.08] hover:text-white">{suggestion}</button>
+                  )
                   ))}
                 </div>
               ) : (
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090909]">
                   {suggestions.map((suggestion, index) => (
-                    <button key={suggestion} type="button" onClick={() => askQuestion(suggestion)} className={`group flex min-h-[68px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.05] ${index !== suggestions.length - 1 ? "border-b border-white/[0.08]" : ""}`}>
-                      <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-neutral-200 group-hover:text-white">{suggestion}</span><span className="mt-1 block text-xs text-neutral-500">{suggestion}</span></span>
-                      <span aria-hidden="true" className="text-base text-neutral-500 transition group-hover:translate-x-0.5 group-hover:text-white">↗</span>
-                    </button>
+                    suggestion === "Explore other Morungs" ? (
+                      <Link key={suggestion} href="/explore" className={`group flex min-h-[68px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.05] ${index !== suggestions.length - 1 ? "border-b border-white/[0.08]" : ""}`}>
+                        <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-neutral-200 group-hover:text-white">{suggestion}</span><span className="mt-1 block text-xs text-neutral-500">Browse the Morungs of Kisama.</span></span>
+                        <span aria-hidden="true" className="text-base text-neutral-500 transition group-hover:translate-x-0.5 group-hover:text-white">↗</span>
+                      </Link>
+                    ) : (
+                      <button key={suggestion} type="button" onClick={() => askQuestion(suggestion)} className={`group flex min-h-[68px] w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.05] ${index !== suggestions.length - 1 ? "border-b border-white/[0.08]" : ""}`}>
+                        <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-neutral-200 group-hover:text-white">{suggestion}</span><span className="mt-1 block text-xs text-neutral-500">{suggestion}</span></span>
+                        <span aria-hidden="true" className="text-base text-neutral-500 transition group-hover:translate-x-0.5 group-hover:text-white">↗</span>
+                      </button>
+                    )
                   ))}
                 </div>
               )}
@@ -181,7 +207,7 @@ export default function KiKhoborConversation({
       <footer className={`z-20 shrink-0 border-t border-white/[0.08] bg-black px-3 pt-1.5 sm:px-6 ${embedded ? "fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] pb-1" : "pb-1"}`}>
         <div className="mx-auto w-full max-w-3xl">
           <form onSubmit={(event) => { event.preventDefault(); void askQuestion(question); }} className="flex items-center gap-3 rounded-[26px] border border-white/[0.15] bg-[#171717] px-1 py-0.5 pl-4 transition-colors focus-within:border-white/30">
-            <input ref={inputRef} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={location ? `Ask about ${location.name}...` : "Ask anything about Nagaland or Hornbill..."} aria-label="Your question" autoComplete="off" disabled={isLoading} className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-neutral-500 disabled:opacity-50" />
+            <input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={location ? `Ask about ${location.name}...` : "Ask anything about Nagaland or Hornbill..."} aria-label="Your question" autoComplete="off" disabled={isLoading} className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-neutral-500 disabled:opacity-50" />
             <button type="submit" aria-label="Send question" disabled={!question.trim() || isLoading} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-lg text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:bg-[#333333] disabled:text-neutral-600">↑</button>
           </form>
           <p className="mt-0.5 text-center text-[9px] leading-[10px] text-neutral-600">Ki-Khobor · Your digital festival companion</p>

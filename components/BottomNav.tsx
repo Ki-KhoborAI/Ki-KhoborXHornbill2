@@ -8,7 +8,6 @@ const navItems = [
   { label: "Home", href: "/", icon: "⌂" },
   { label: "Explore", href: "/explore", icon: "◎" },
   { label: "Events", href: "/events", icon: "▦" },
-  { label: "Updates", href: "/updates", icon: "◉" },
   { label: "Ask", href: "/ask", icon: "✳" },
 ];
 
@@ -25,7 +24,7 @@ export default function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#080808]/95 backdrop-blur-md"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5">
+      <div className="mx-auto grid max-w-lg grid-cols-4">
         {navItems.map((item) => {
           const href =
             item.href === "/ask" && routeLocation

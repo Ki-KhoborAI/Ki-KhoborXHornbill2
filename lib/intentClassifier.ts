@@ -1,4 +1,4 @@
-import { ai, GEMINI_MODEL } from "./gemini";
+import { GEMINI_MODEL, getGeminiClient } from "./gemini";
 import type { IntentClass } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -136,7 +136,8 @@ User message: "${question.replace(/"/g, '\\"')}"
 Respond with ONLY the exact intent class name, nothing else.`;
 
   try {
-    const callPromise = ai.models.generateContent({
+    const gemini = getGeminiClient();
+    const callPromise = gemini.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
     });

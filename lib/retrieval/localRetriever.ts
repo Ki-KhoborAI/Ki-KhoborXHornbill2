@@ -4,10 +4,17 @@ import {
   formatTribeAggregateResponse,
   formatTribeResponse,
 } from "../responseBuilder";
-import type { IntentClass, RetrievalOutcome, RetrievedRecord } from "../types";
+import {
+  asString,
+  type IntentClass,
+  type LocalKnowledgeItem,
+  type RetrievalOutcome,
+  type RetrievedRecord,
+} from "../types";
+import { festivalDateContextScoreAdjustment } from "../knowledgeQuality";
 import { evaluateRetrievalRelevance } from "./relevanceEvaluator";
 
-const items = localKnowledgeData as Array<Record<string, any>>;
+const items = localKnowledgeData as LocalKnowledgeItem[];
 
 const SYNONYMS: Record<string, string[]> = {
   where: ["location", "located", "venue", "place", "kisama", "kohima", "site", "address", "situated"],
@@ -56,7 +63,7 @@ export function retrieveFromLocal(params: LocalRetrieveParams): RetrievalOutcome
       (it) =>
         it.category === "tribe_profile" &&
         (it.id === `tribe-${tribeSlug}` ||
-          (it.attributes?.tribeName as string)?.toLowerCase() === tribeSlug ||
+          asString(it.attributes?.tribeName)?.toLowerCase() === tribeSlug ||
           String(it.title).toLowerCase().includes(tribeSlug))
     );
     if (tribe) {
@@ -113,6 +120,15 @@ export function retrieveFromLocal(params: LocalRetrieveParams): RetrievalOutcome
     ) {
       if (id.includes("date") || t.includes("date")) score += 140;
       if (id.includes("timing") || t.includes("timing")) score += 100;
+      // Prefer current-year duration guidance over prior-edition handbook cards
+      // unless the visitor explicitly asks about 2025.
+      score += festivalDateContextScoreAdjustment({
+        id,
+        title: item.title,
+        category: item.category,
+        queryLower: qLower,
+        attributes: item.attributes,
+      });
     }
 
     if (rawTokens.includes("who") || rawTokens.includes("organizer") || rawTokens.includes("organises") || rawTokens.includes("organized")) {
