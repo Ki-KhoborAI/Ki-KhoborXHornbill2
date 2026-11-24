@@ -110,9 +110,12 @@ function createMorung(id: string, tribeName: string): Location {
  * The route IDs and tribe labels below follow the explicit user-provided list.
  * The workbook's individual Morung narratives are not populated because their
  * source/status is missing and its Missing Information tab flags them as
- * unconfirmed. The source-backed count of 17 is kept as a target only.
+ * unconfirmed.
+ *
+ * Existing QR destinations use `/experience/{id}` for the original 17 Morungs.
+ * Those IDs must not be renamed. International Morung is an additive 18th entry.
  */
-export const targetMorungCount = 17;
+export const targetMorungCount = 18;
 
 export const locations: Record<string, Location> = {
   angami: {
@@ -142,4 +145,37 @@ export const locations: Record<string, Location> = {
   tikhir: createMorung("tikhir", "Tikhir"),
   yimkhiung: createMorung("yimkhiung", "Yimkhiung"),
   zeliang: createMorung("zeliang", "Zeliang"),
+  /**
+   * Additive 18th Morung. Unique slug `international` — does not alter any
+   * existing QR destination. Content and photography to be supplied later.
+   */
+  international: {
+    id: "international",
+    name: "International Morung",
+    category: "HORNBILL FESTIVAL",
+    description: "More information coming soon.",
+    image: null,
+    availability: "coming-soon",
+    verificationStatus: "not-started",
+    reviewStatus: "not-started",
+    sections: Object.fromEntries(
+      morungSectionKeys.map((key) => [key, []])
+    ) as NonNullable<Location["sections"]>,
+    sectionVerificationStatus: Object.fromEntries(
+      morungSectionKeys.map((key) => [key, "not-started"])
+    ) as NonNullable<Location["sectionVerificationStatus"]>,
+    questions: [
+      "What verified information is available about the International Morung?",
+      "What can I see at this Morung?",
+      "What is happening at Hornbill?",
+      "Explore other Morungs",
+    ],
+    media: [],
+    relatedEvents: [],
+    navigation: { venue: "Kisama Heritage Village, Nagaland" },
+    source: [],
+  },
 };
+
+/** Ordered Morung list for grids and counts. */
+export const morungLocations = Object.values(locations);

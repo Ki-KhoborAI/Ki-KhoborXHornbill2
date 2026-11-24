@@ -1,8 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { festivalSchedule } from "../../data/festivalSchedule";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import type { FestivalDayNumber } from "../../data/festivalSchedule";
+import { festivalSchedule } from "../../data/festivalSchedule";
+import {
+  festivalScheduleDemo,
+  USE_FESTIVAL_SCHEDULE_DEMO,
+} from "../../data/festivalScheduleDemo";
 import {
   formatKolkataTime,
   getEventStatus,
@@ -12,13 +23,27 @@ import {
 
 const STATUS_LABEL: Record<EventStatus, string> = {
   upcoming: "Upcoming",
-  live: "Live",
+  live: "Live now",
   completed: "Completed",
 };
+
+/** Demo data is isolated; flip the flag / remove the import when official data is ready. */
+const scheduleSource = USE_FESTIVAL_SCHEDULE_DEMO
+  ? festivalScheduleDemo
+  : festivalSchedule;
+
+const DAYS = scheduleSource.map((item) => item.day);
 
 export default function FestivalSchedule() {
   const [day, setDay] = useState<FestivalDayNumber>(1);
   const [now, setNow] = useState<Date | null>(null);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const listboxId = useId();
 
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -35,118 +60,267 @@ export default function FestivalSchedule() {
     };
   }, []);
 
-  const selected = festivalSchedule.find((item) => item.day === day) ?? festivalSchedule[0];
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    list.scrollTop = 0;
+  }, [day]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const root = dropdownRef.current;
+      if (!root) return;
+      if (event.target instanceof Node && !root.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const selected =
+    scheduleSource.find((item) => item.day === day) ?? scheduleSource[0];
   const events = useMemo(
     () => sortScheduleEvents(selected.events),
     [selected.events]
   );
 
+  function focusOption(index: number) {
+    window.requestAnimationFrame(() => {
+      optionRefs.current[index]?.focus();
+    });
+  }
+
+  function openMenu() {
+    const index = DAYS.indexOf(day);
+    const nextIndex = index === -1 ? 0 : index;
+    setActiveIndex(nextIndex);
+    setOpen(true);
+    focusOption(nextIndex);
+  }
+
+  function selectDay(nextDay: FestivalDayNumber) {
+    setDay(nextDay);
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function onTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openMenu();
+    }
+  }
+
+  function moveActive(nextIndex: number) {
+    setActiveIndex(nextIndex);
+    optionRefs.current[nextIndex]?.focus();
+  }
+
+  function onListKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveActive((activeIndex + 1) % DAYS.length);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveActive((activeIndex - 1 + DAYS.length) % DAYS.length);
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      moveActive(0);
+      return;
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      moveActive(DAYS.length - 1);
+      return;
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const nextDay = DAYS[activeIndex];
+      if (nextDay) selectDay(nextDay);
+    }
+  }
+
   return (
     <section
       id="schedule"
       aria-labelledby="schedule-heading"
-      className="relative px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-8 sm:px-8"
+      className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5"
     >
-      <div className="mx-auto w-full max-w-3xl rounded-[28px] border border-white/15 bg-white/[0.07] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] backdrop-blur-2xl sm:p-8">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-white/55">
-              Festival schedule
-            </p>
-            <h2
-              id="schedule-heading"
-              className="mt-2 text-3xl font-medium tracking-[-0.04em] text-white"
-            >
-              Day {selected.day}
-              {selected.label ? (
-                <span className="mt-1 block text-sm font-normal tracking-normal text-white/60">
-                  {selected.label}
-                </span>
-              ) : null}
-            </h2>
-          </div>
+      <div ref={dropdownRef} className="relative w-fit shrink-0">
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          onClick={() => {
+            if (open) {
+              setOpen(false);
+              return;
+            }
+            openMenu();
+          }}
+          onKeyDown={onTriggerKeyDown}
+          className="inline-flex h-9 items-center gap-2 rounded-full border border-white/15 bg-[#1b1b1b] px-3.5 text-xs font-medium tracking-wide text-white/85 transition hover:border-white/30 hover:bg-[#242424] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+        >
+          <span>Day {selected.day}</span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 12 12"
+            className={`h-2.5 w-2.5 text-white/55 transition-transform duration-200 ${
+              open ? "rotate-180" : ""
+            }`}
+          >
+            <path
+              d="M2.2 4.2 6 8l3.8-3.8"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
 
-          <label className="block sm:min-w-52">
-            <span className="mb-2 block text-[10px] uppercase tracking-[0.18em] text-white/50">
-              Select a day
-            </span>
-            <select
-              value={day}
-              onChange={(event) =>
-                setDay(Number(event.target.value) as FestivalDayNumber)
-              }
-              className="h-12 w-full rounded-2xl border border-white/20 bg-black/35 px-3 text-sm text-white outline-none backdrop-blur-xl"
-            >
-              {festivalSchedule.map((item) => (
-                <option key={item.day} value={item.day} className="bg-[#161616]">
-                  Day {item.day}
-                  {item.label ? ` · ${item.label}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {events.length === 0 ? (
-          <p className="mt-8 max-w-xl text-sm leading-7 text-white/70">
-            The Day {selected.day} schedule has not been published yet. Verified
-            event names, times, and venues will appear in this timeline when
-            they are added.
-          </p>
-        ) : (
-          <ol className="mt-8 space-y-3" aria-live="polite">
-            {events.map((event) => {
-              const status = now ? getEventStatus(event, now) : null;
+        {open ? (
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label="Festival day"
+            tabIndex={-1}
+            onKeyDown={onListKeyDown}
+            className="absolute left-0 top-[calc(100%+0.4rem)] z-20 min-w-full overflow-hidden rounded-xl border border-white/15 bg-[#171717] py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+          >
+            {DAYS.map((dayNumber, index) => {
+              const active = dayNumber === day;
               return (
-                <li
-                  key={event.id}
-                  className="rounded-[22px] border border-white/12 bg-black/25 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+                <button
+                  key={dayNumber}
+                  ref={(node) => {
+                    optionRefs.current[index] = node;
+                  }}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  tabIndex={index === activeIndex ? 0 : -1}
+                  onClick={() => selectDay(dayNumber)}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  className={`flex w-full items-center px-3.5 py-2 text-left text-xs tracking-wide transition ${
+                    index === activeIndex
+                      ? "bg-white/10 text-white"
+                      : "text-white/70"
+                  } ${active ? "font-medium text-white" : ""}`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs tabular-nums text-white/60">
-                        {formatKolkataTime(event.start)}
-                        <span aria-hidden="true"> – </span>
-                        <span className="sr-only"> to </span>
-                        {formatKolkataTime(event.end)}
-                      </p>
-                      <h3
-                        className={`mt-1 text-base font-medium tracking-tight ${
-                          status === "completed" ? "text-white/70" : "text-white"
-                        }`}
-                      >
-                        {event.name}
-                      </h3>
-                    </div>
-                    {status && (
-                      <span
-                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] ${
-                          status === "live"
-                            ? "border-white/30 bg-white/15 text-white"
-                            : "border-white/10 text-white/55"
-                        }`}
-                      >
-                        {status === "live" && (
-                          <span
-                            aria-hidden="true"
-                            className="h-1.5 w-1.5 rounded-full bg-white"
-                          />
-                        )}
-                        {STATUS_LABEL[status]}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-3 text-sm text-white/80">{event.venue}</p>
-                  {event.description && (
-                    <p className="mt-2 text-sm leading-6 text-white/60">
-                      {event.description}
-                    </p>
-                  )}
-                </li>
+                  Day {dayNumber}
+                </button>
               );
             })}
-          </ol>
-        )}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#151515]">
+        <header className="shrink-0 border-b border-white/10 px-5 py-3.5 sm:px-6 sm:py-4">
+          <h2
+            id="schedule-heading"
+            className="text-[10px] font-medium uppercase tracking-[0.22em] text-white/40"
+          >
+            Festival schedule
+          </h2>
+        </header>
+
+        <div
+          ref={listRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-5"
+        >
+          {events.length === 0 ? (
+            <p className="max-w-xl text-sm leading-7 text-white/55">
+              The Day {selected.day} schedule has not been published yet.
+              Verified event names, times, and venues will appear in this
+              timeline when they are added.
+            </p>
+          ) : (
+            <ol className="space-y-3" aria-live="polite">
+              {events.map((event) => {
+                const status = now ? getEventStatus(event, now) : null;
+                const endLabel = event.end ? formatKolkataTime(event.end) : null;
+
+                return (
+                  <li
+                    key={event.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3.5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3
+                          className={`text-[15px] font-medium tracking-tight ${
+                            status === "completed"
+                              ? "text-white/60"
+                              : "text-white"
+                          }`}
+                        >
+                          {event.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-white/55">
+                          {event.venue}
+                        </p>
+                        <p className="mt-1.5 text-xs tabular-nums text-white/45">
+                          {formatKolkataTime(event.start)}
+                          {endLabel ? (
+                            <>
+                              <span aria-hidden="true"> – </span>
+                              <span className="sr-only"> to </span>
+                              {endLabel}
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                      {status && (
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.12em] ${
+                            status === "live"
+                              ? "border-white/30 bg-white/10 text-white"
+                              : "border-white/10 text-white/45"
+                          }`}
+                        >
+                          {status === "live" && (
+                            <span
+                              aria-hidden="true"
+                              className="h-1.5 w-1.5 rounded-full bg-white"
+                            />
+                          )}
+                          {STATUS_LABEL[status]}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
       </div>
     </section>
   );

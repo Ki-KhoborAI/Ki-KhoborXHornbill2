@@ -1,5 +1,5 @@
 /**
- * Day 1–10 Hornbill schedule.
+ * Day 1–10 Hornbill schedule — official / verified source.
  *
  * Leave `events` empty until a verified programme is available.
  * Do not add event names, venues, dates, or times from memory.
@@ -9,6 +9,9 @@
  *
  * `start` and `end` must be ISO-8601 timestamps with an explicit +05:30 offset.
  * Status (upcoming, live, completed) is calculated from those instants.
+ *
+ * Temporary UI demo events live in `festivalScheduleDemo.ts` and must not be
+ * copied here. Switch FestivalSchedule back to this export when demos end.
  */
 export type FestivalScheduleEvent = {
   id: string;
