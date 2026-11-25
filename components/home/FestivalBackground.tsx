@@ -17,6 +17,10 @@ const SLIDES = [
   },
 ] as const;
 
+/**
+ * Photographic hero media for the homepage.
+ * Preserves the existing 15s rotation, crossfade, reduced-motion and error handling.
+ */
 export default function FestivalBackground() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [failed, setFailed] = useState<ReadonlySet<number>>(() => new Set());
@@ -56,47 +60,55 @@ export default function FestivalBackground() {
   const visibleSlides = SLIDES.filter((_, index) => !failed.has(index));
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden="true">
-      <div className="absolute inset-0 bg-[#0b0b0b]">
-        {SLIDES.map((slide, index) =>
-          failed.has(index) ? null : (
-            <Image
-              key={slide.src}
-              src={slide.src}
-              alt={slide.alt}
-              fill
-              priority
-              sizes="100vw"
-              className={`object-cover ${
-                reduceMotion ? "" : "transition-opacity duration-1000 ease-in-out"
-              } ${index === activeIndex ? "opacity-100" : "opacity-0"}`}
-              onError={() => {
-                setFailed((current) => {
-                  if (current.has(index)) return current;
-                  const next = new Set(current);
-                  next.add(index);
-                  setActiveIndex((active) => {
-                    if (!next.has(active)) return active;
-                    const fallback = SLIDES.findIndex(
-                      (_, slideIndex) => !next.has(slideIndex)
-                    );
-                    return fallback === -1 ? active : fallback;
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#151515]">
+      <div className="relative min-h-[148px] overflow-hidden sm:min-h-[200px] md:min-h-[220px] lg:min-h-[240px]">
+        <div className="absolute inset-0 bg-[#181818]">
+          {SLIDES.map((slide, index) =>
+            failed.has(index) ? null : (
+              <Image
+                key={slide.src}
+                src={slide.src}
+                alt={slide.alt}
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 1024px"
+                className={`object-cover ${
+                  reduceMotion
+                    ? ""
+                    : "transition-opacity duration-1000 ease-in-out"
+                } ${index === activeIndex ? "opacity-100" : "opacity-0"}`}
+                onError={() => {
+                  setFailed((current) => {
+                    if (current.has(index)) return current;
+                    const next = new Set(current);
+                    next.add(index);
+                    setActiveIndex((active) => {
+                      if (!next.has(active)) return active;
+                      const fallback = SLIDES.findIndex(
+                        (_, slideIndex) => !next.has(slideIndex)
+                      );
+                      return fallback === -1 ? active : fallback;
+                    });
+                    return next;
                   });
-                  return next;
-                });
-              }}
-            />
-          )
-        )}
-      </div>
+                }}
+              />
+            )
+          )}
+        </div>
 
-      {visibleSlides.length > 0 && (
-        <>
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-x-0 bottom-0 h-[46%] bg-gradient-to-t from-black/75 to-transparent" />
-          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/45 to-transparent" />
-        </>
-      )}
+        {visibleSlides.length === 0 ? (
+          <div
+            role="img"
+            aria-label="Festival photograph placeholder"
+            className="absolute inset-0 flex items-center justify-center bg-[#181818]"
+          >
+            <span className="text-[9px] uppercase tracking-[0.2em] text-white/35">
+              Photograph coming soon
+            </span>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

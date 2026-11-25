@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -24,6 +23,10 @@ type ExperienceClientProps = {
   locationId: string;
 };
 
+/**
+ * Single reusable Morung experience template for all 18 locations.
+ * Content and imagery come from `data/locations`; layout stays identical.
+ */
 export default function ExperienceClient({
   locationId,
 }: ExperienceClientProps) {
@@ -36,10 +39,15 @@ export default function ExperienceClient({
     ? experienceSectionOrder
         .map(({ key, title }) => {
           const rawContent = location.sections?.[key];
-          const isVerified = location.sectionVerificationStatus?.[key] === "verified";
-          const content = isVerified && Array.isArray(rawContent)
-            ? rawContent.filter((paragraph) => typeof paragraph === "string" && paragraph.trim().length > 0)
-            : [];
+          const isVerified =
+            location.sectionVerificationStatus?.[key] === "verified";
+          const content =
+            isVerified && Array.isArray(rawContent)
+              ? rawContent.filter(
+                  (paragraph) =>
+                    typeof paragraph === "string" && paragraph.trim().length > 0
+                )
+              : [];
 
           return { title, content };
         })
@@ -54,9 +62,7 @@ export default function ExperienceClient({
             KI-KHOBOR × HORNBILL
           </p>
 
-          <h1 className="mt-5 text-3xl font-medium">
-            Location not found
-          </h1>
+          <h1 className="mt-5 text-3xl font-medium">Location not found</h1>
 
           <p className="mt-3 text-sm leading-6 text-white/60">
             We couldn&apos;t find this location. Check the URL and try again.
@@ -77,6 +83,10 @@ export default function ExperienceClient({
     );
   }
 
+  const suggestionQuestions = (location.questions ?? []).filter(
+    (item) => item !== "Explore other Morungs"
+  );
+
   return (
     <main
       className="fixed inset-x-0 top-0 flex flex-col overflow-hidden bg-[#0b0b0b] text-white"
@@ -86,10 +96,10 @@ export default function ExperienceClient({
       }}
     >
       <div className="z-20 shrink-0 bg-[#0b0b0b]">
-        <SiteHeader rightLabel="Festival guide" />
+        <SiteHeader rightLabel="← Morungs" rightHref="/explore/morungs" />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#0b0b0b] pb-24">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#0b0b0b] pb-32">
         <div className="mx-auto max-w-5xl px-5 pb-8 sm:px-8">
           <section className="pt-3 sm:pt-5">
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#151515]">
@@ -140,25 +150,32 @@ export default function ExperienceClient({
                   </p>
                 </div>
               </div>
-
             </div>
           </section>
 
-          <section className="pt-6 sm:pt-8">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">
-              Welcome
-            </p>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
-              {location.description || "More information coming soon."}
-            </p>
-          </section>
+          {location.tribeIntroduction && location.tribeName ? (
+            <section
+              className="pt-3 sm:pt-4"
+              aria-labelledby="tribe-introduction-heading"
+            >
+              <p
+                id="tribe-introduction-heading"
+                className="text-[10px] uppercase tracking-[0.2em] text-white/40"
+              >
+                About the {location.tribeName}
+              </p>
+              <p className="mt-2.5 max-w-2xl text-sm leading-7 text-white/75">
+                {location.tribeIntroduction}
+              </p>
+            </section>
+          ) : null}
 
           {experienceSections.map((section) => (
-            <section key={section.title} className="pt-8 sm:pt-10">
+            <section key={section.title} className="pt-5 sm:pt-6">
               <h2 className="text-lg font-medium tracking-tight sm:text-xl">
                 {section.title}
               </h2>
-              <div className="mt-3 space-y-3 text-sm leading-7 text-white/65">
+              <div className="mt-2.5 space-y-3 text-sm leading-7 text-white/65">
                 {section.content.map((paragraph, index) => (
                   <p key={`${section.title}-${index}`}>{paragraph}</p>
                 ))}
@@ -166,31 +183,24 @@ export default function ExperienceClient({
             </section>
           ))}
 
-          {location.tribeIntroduction && location.tribeName && (
-            <section className="pt-6 sm:pt-8" aria-labelledby="tribe-introduction-heading">
-              <p
-                id="tribe-introduction-heading"
-                className="text-[10px] uppercase tracking-[0.2em] text-white/40"
-              >
-                About the {location.tribeName}
-              </p>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/75">
-                {location.tribeIntroduction}
-              </p>
-            </section>
-          )}
-
-          <section className="pt-6 sm:pt-8" aria-label="Ki-Khobor conversation">
+          <section className="pt-5 sm:pt-6" aria-label="Ki-Khobor conversation">
+            <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-white/40">
+              Ask Ki-Khobor
+            </p>
             <KiKhoborConversation
               key={id}
               location={location}
-              suggestions={location.questions ?? []}
+              suggestions={[
+                ...suggestionQuestions,
+                "Explore other Morungs",
+              ]}
               embedded
+              askInputId={`morung-ask-${id}`}
+              placeholder="Ask about this Morung…"
             />
           </section>
         </div>
       </div>
-
     </main>
   );
 }
