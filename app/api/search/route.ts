@@ -1,5 +1,6 @@
 import type { Document, Filter } from "mongodb";
 import { NextResponse } from "next/server";
+import { publishedContentFilter } from "../../../lib/admin/content/publication";
 import { getDatabase } from "../../../lib/db";
 
 export async function GET(req: Request) {
@@ -20,7 +21,9 @@ export async function GET(req: Request) {
     const kiCol = db.collection("knowledge_items");
     const tribesCol = db.collection("tribes");
 
-    const filter: Filter<Document> = {};
+    const filter: Filter<Document> = {
+      ...publishedContentFilter,
+    };
     if (category) {
       filter.category = category;
     }
@@ -41,6 +44,7 @@ export async function GET(req: Request) {
       query
         ? tribesCol
             .find({
+              ...publishedContentFilter,
               $or: [
                 { name: new RegExp(query, "i") },
                 { traditionalFestivalName: new RegExp(query, "i") },

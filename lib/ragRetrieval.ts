@@ -1,3 +1,4 @@
+import { publishedContentFilter } from "./admin/content/publication";
 import { getDatabase } from "./db";
 import localKnowledgeData from "../data/knowledgeBase.json";
 
@@ -301,7 +302,10 @@ export async function retrieveContext(question: string): Promise<RetrievalResult
     if (isAggregate) {
       const tribeDocs = await db
         .collection("tribes")
-        .find({}, { projection: { slug: 1, name: 1, _id: 0 } })
+        .find(
+          { ...publishedContentFilter },
+          { projection: { slug: 1, name: 1, _id: 0 } }
+        )
         .toArray();
 
       if (tribeDocs.length > 0) {
@@ -324,7 +328,10 @@ export async function retrieveContext(question: string): Promise<RetrievalResult
     if (tribeSlug) {
       const tribeDoc = await db
         .collection("tribes")
-        .findOne({ slug: tribeSlug }) as Record<string, unknown> | null;
+        .findOne({
+          slug: tribeSlug,
+          ...publishedContentFilter,
+        }) as Record<string, unknown> | null;
 
       if (tribeDoc) {
         contextBlocks.push(formatTribeBlock(tribeDoc));
@@ -340,16 +347,19 @@ export async function retrieveContext(question: string): Promise<RetrievalResult
     if (keywords.length > 0) {
       const allItems = await db
         .collection("knowledge_items")
-        .find({}, {
-          projection: {
-            slug: 1,
-            title: 1,
-            category: 1,
-            content: 1,
-            attributes: 1,
-            _id: 0,
-          },
-        })
+        .find(
+          { ...publishedContentFilter },
+          {
+            projection: {
+              slug: 1,
+              title: 1,
+              category: 1,
+              content: 1,
+              attributes: 1,
+              _id: 0,
+            },
+          }
+        )
         .toArray() as Array<Record<string, unknown>>;
 
       const scored = allItems
