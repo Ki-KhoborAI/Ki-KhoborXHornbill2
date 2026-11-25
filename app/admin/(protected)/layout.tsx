@@ -9,6 +9,7 @@ import {
 } from "../../../lib/admin/auth/config";
 import { verifyAdminSessionToken } from "../../../lib/admin/auth/session";
 import AdminLogoutButton from "./LogoutButton";
+import AdminNav from "./AdminNav";
 
 export default function ProtectedAdminLayout({
   children,
@@ -53,25 +54,72 @@ async function ProtectedAdminShell({
 
   return (
     <div className="min-h-screen bg-[#0b0b0b] text-white">
-      <header className="border-b border-white/10 px-5 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-          <div>
+      <div className="mx-auto flex min-h-screen max-w-6xl">
+        <aside className="hidden w-56 shrink-0 border-r border-white/10 px-4 py-6 md:block">
+          <Link href="/admin" className="block px-3">
             <p className="text-xs font-semibold tracking-[0.12em]">
               KI-KHOBOR <span className="text-white/50">×</span> ADMIN
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/45">
-              Signed in as {session.username}
+              Content console
             </p>
+          </Link>
+          <div className="mt-8">
+            <AdminNav />
           </div>
-          <nav className="flex items-center gap-3 text-sm text-white/70">
-            <Link href="/admin" className="hover:text-white">
-              Dashboard
-            </Link>
-            <AdminLogoutButton />
-          </nav>
+          <div className="mt-10 border-t border-white/10 px-3 pt-4 text-[11px] text-white/40">
+            Signed in as {session.username}
+            <div className="mt-3">
+              <AdminLogoutButton />
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="border-b border-white/10 px-5 py-4 md:hidden">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em]">
+                  KI-KHOBOR <span className="text-white/50">×</span> ADMIN
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/45">
+                  {session.username}
+                </p>
+              </div>
+              <AdminLogoutButton />
+            </div>
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 text-sm">
+              <MobileAdminLinks />
+            </div>
+          </header>
+
+          <main className="flex-1 px-5 py-8">{children}</main>
         </div>
-      </header>
-      <div className="mx-auto max-w-5xl px-5 py-8">{children}</div>
+      </div>
     </div>
+  );
+}
+
+function MobileAdminLinks() {
+  const items = [
+    { href: "/admin", label: "Overview" },
+    { href: "/admin/tribes", label: "Tribes" },
+    { href: "/admin/knowledge", label: "Knowledge" },
+    { href: "/admin/festivals", label: "Festivals" },
+    { href: "/admin/morungs", label: "Morungs" },
+  ];
+
+  return (
+    <>
+      {items.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className="whitespace-nowrap rounded-full border border-white/15 px-3 py-1.5 text-white/70 hover:border-white/30 hover:text-white"
+        >
+          {item.label}
+        </Link>
+      ))}
+    </>
   );
 }
