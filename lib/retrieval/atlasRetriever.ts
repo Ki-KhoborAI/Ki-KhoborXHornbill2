@@ -1,3 +1,4 @@
+import { publishedContentFilter } from "../admin/content/publication";
 import { getDatabase } from "../db";
 import {
   detectTribeSubCategory,
@@ -53,9 +54,12 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
   const tribesCol = db.collection("tribes");
   const kiCol = db.collection("knowledge_items");
 
-  // 1. Tribe Aggregate Request
+  // 1. Tribe Aggregate Request — published documents only
   if (intent === "FACTUAL_TRIBE_LIST") {
-    const tribes = await tribesCol.find({}).sort({ name: 1 }).toArray();
+    const tribes = await tribesCol
+      .find({ ...publishedContentFilter })
+      .sort({ name: 1 })
+      .toArray();
     if (tribes.length > 0) {
       const isCount = /how\s+many|number\s+of|count/i.test(qLower);
       const response = formatTribeAggregateResponse(tribes, isCount ? "count" : "list", "atlas");
@@ -64,9 +68,12 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
     return { kind: "no_match" };
   }
 
-  // 2. Specific Tribe Request
+  // 2. Specific Tribe Request — published documents only
   if (intent === "FACTUAL_TRIBE" && tribeSlug) {
-    const tribe = await tribesCol.findOne({ slug: tribeSlug });
+    const tribe = await tribesCol.findOne({
+      slug: tribeSlug,
+      ...publishedContentFilter,
+    });
     if (tribe) {
       const subCat = detectTribeSubCategory(query);
       const response = formatTribeResponse(tribe, subCat, "atlas");
@@ -87,7 +94,9 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
     }
   }
 
-  const items = (await kiCol.find({}).toArray()) as AtlasKnowledgeDoc[];
+  const items = (await kiCol
+    .find({ ...publishedContentFilter })
+    .toArray()) as AtlasKnowledgeDoc[];
 
   const scored = items.map((item) => {
     let score = 0;
