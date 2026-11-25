@@ -8,6 +8,9 @@ import {
 } from "../../../../../lib/admin/tribes";
 import TribeEditor from "../TribeEditor";
 
+/** Dynamic slug is request-time; allow blocking for Cache Components validation. */
+export const instant = false;
+
 export default function AdminEditTribePage({
   params,
 }: {

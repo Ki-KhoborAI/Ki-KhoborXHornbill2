@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -30,11 +31,28 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-   <body className="min-h-full flex flex-col">
-  <ServiceWorkerRegistration />
-  {children}
-  <BottomNav />
-</body>
+      <body className="flex min-h-full flex-col">
+        <ServiceWorkerRegistration />
+        {children}
+        {/*
+          BottomNav uses usePathname(). With Cache Components, dynamic routes
+          (and not-found fallbacks) require a Suspense boundary around it.
+        */}
+        <Suspense
+          fallback={
+            <nav
+              aria-label="Main navigation"
+              aria-busy="true"
+              className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#080808]/95"
+              style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+            >
+              <div className="mx-auto grid h-[52px] max-w-lg grid-cols-4" />
+            </nav>
+          }
+        >
+          <BottomNav />
+        </Suspense>
+      </body>
     </html>
   );
 }

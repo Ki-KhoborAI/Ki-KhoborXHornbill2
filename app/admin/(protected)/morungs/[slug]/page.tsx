@@ -1,6 +1,9 @@
 import KnowledgeEditPage from "../../knowledge/KnowledgeEditPage";
 import { MORUNGS_MODULE } from "../../knowledge/moduleConfigs";
 
+/** Dynamic slug is request-time; allow blocking for Cache Components validation. */
+export const instant = false;
+
 export default function AdminEditMorungPage({
   params,
 }: {

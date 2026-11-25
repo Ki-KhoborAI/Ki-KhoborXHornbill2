@@ -65,7 +65,29 @@ async function ProtectedAdminShell({
             </p>
           </Link>
           <div className="mt-8">
-            <AdminNav />
+            {/* AdminNav uses usePathname and needs Suspense under dynamic admin slugs. */}
+            <Suspense
+              fallback={
+                <nav
+                  aria-label="Admin modules"
+                  className="space-y-1"
+                  aria-busy="true"
+                >
+                  {["Overview", "Tribes", "Knowledge", "Festivals", "Morungs"].map(
+                    (label) => (
+                      <div
+                        key={label}
+                        className="rounded-lg px-3 py-2 text-sm text-white/35"
+                      >
+                        {label}
+                      </div>
+                    )
+                  )}
+                </nav>
+              }
+            >
+              <AdminNav />
+            </Suspense>
           </div>
           <div className="mt-10 border-t border-white/10 px-3 pt-4 text-[11px] text-white/40">
             Signed in as {session.username}
