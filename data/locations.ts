@@ -120,30 +120,59 @@ export const targetMorungCount = 18;
 export const locations: Record<string, Location> = {
   angami: {
     ...createMorung("angami", "Angami"),
+    // Keep established Angami card photograph; new batch did not replace it.
     image: "/images/morungs/angami-card.jpg",
     tribeIntroduction:
       "The Angami are one of Nagaland’s major Naga tribes, with their own distinct language, traditions and cultural celebrations. Their principal festival, Sekrenyi, is associated with purification, renewal, feasting and song.",
   },
-  ao: createMorung("ao", "Ao"),
+  ao: {
+    ...createMorung("ao", "Ao"),
+    image: "/images/morungs/ao.webp",
+  },
   chakhesang: {
     ...createMorung("chakhesang", "Chakhesang"),
-    image: "/images/morungs/chakhesang-card.jpg",
+    image: "/images/morungs/chakhesang.webp",
   },
-  chang: createMorung("chang", "Chang"),
+  chang: {
+    ...createMorung("chang", "Chang"),
+    image: "/images/morungs/chang.webp",
+  },
   khiamniungan: createMorung("khiamniungan", "Khiamniungan"),
-  konyak: createMorung("konyak", "Konyak"),
+  konyak: {
+    ...createMorung("konyak", "Konyak"),
+    image: "/images/morungs/konyak.webp",
+  },
   kuki: createMorung("kuki", "Kuki"),
-  kachari: createMorung("kachari", "Kachari"),
-  lotha: createMorung("lotha", "Lotha"),
-  phom: createMorung("phom", "Phom"),
-  // The supplied Pochury file duplicates the Chakhesang photograph; keep the
-  // Pochury image unset until a correctly mapped photograph is available.
-  pochury: createMorung("pochury", "Pochury"),
+  kachari: {
+    ...createMorung("kachari", "Kachari"),
+    image: "/images/morungs/kachari.webp",
+  },
+  lotha: {
+    ...createMorung("lotha", "Lotha"),
+    image: "/images/morungs/lotha.webp",
+  },
+  phom: {
+    ...createMorung("phom", "Phom"),
+    image: "/images/morungs/phom.webp",
+  },
+  pochury: {
+    ...createMorung("pochury", "Pochury"),
+    image: "/images/morungs/pochury.webp",
+  },
   rengma: createMorung("rengma", "Rengma"),
-  sangtam: createMorung("sangtam", "Sangtam"),
-  sumi: createMorung("sumi", "Sumi"),
+  sangtam: {
+    ...createMorung("sangtam", "Sangtam"),
+    image: "/images/morungs/sangtam.webp",
+  },
+  sumi: {
+    ...createMorung("sumi", "Sumi"),
+    image: "/images/morungs/sumi.webp",
+  },
   tikhir: createMorung("tikhir", "Tikhir"),
-  yimkhiung: createMorung("yimkhiung", "Yimkhiung"),
+  yimkhiung: {
+    ...createMorung("yimkhiung", "Yimkhiung"),
+    image: "/images/morungs/yimkhiung.webp",
+  },
   zeliang: createMorung("zeliang", "Zeliang"),
   /**
    * Additive 18th Morung. Unique slug `international` — does not alter any
