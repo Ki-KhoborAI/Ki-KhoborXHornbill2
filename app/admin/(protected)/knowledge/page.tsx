@@ -1,10 +1,6 @@
-import ModulePlaceholder from "../ModulePlaceholder";
+import KnowledgeModulePage from "./KnowledgeModulePage";
+import { KNOWLEDGE_MODULE } from "./moduleConfigs";
 
 export default function AdminKnowledgePage() {
-  return (
-    <ModulePlaceholder
-      title="Knowledge"
-      description="Search and maintain knowledge base items across festival, geography, culture, and heritage categories."
-    />
-  );
+  return <KnowledgeModulePage config={KNOWLEDGE_MODULE} />;
 }

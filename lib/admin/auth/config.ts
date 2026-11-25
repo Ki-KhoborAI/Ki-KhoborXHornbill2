@@ -26,6 +26,28 @@ function requireEnv(name: string): string {
   return value;
 }
 
+/** Normalize possible env escaping (\$ → $) then validate bcrypt shape. */
+export function normalizePasswordHash(value: string): string {
+  return value.trim().replace(/\\\$/g, "$");
+}
+
+/** bcrypt hashes look like $2a$/$2b$/$2y$ with cost and 53-char digest. */
+export function isBcryptPasswordHash(value: string): boolean {
+  return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(
+    normalizePasswordHash(value)
+  );
+}
+
+function requirePasswordHash(): string {
+  const value = normalizePasswordHash(requireEnv("ADMIN_PASSWORD_HASH"));
+  if (!isBcryptPasswordHash(value)) {
+    throw new AdminAuthConfigError(
+      "ADMIN_PASSWORD_HASH must be a bcrypt hash (run npm run admin:reset). Do not store the plaintext password in this variable."
+    );
+  }
+  return value;
+}
+
 /**
  * Parse ADMIN_SESSION_TTL.
  * Accepts seconds as a positive integer string, or shorthand like "8h" / "480m".
@@ -71,7 +93,7 @@ export type AdminAuthConfig = {
 export function getAdminAuthConfig(): AdminAuthConfig {
   return {
     username: requireEnv("ADMIN_USERNAME"),
-    passwordHash: requireEnv("ADMIN_PASSWORD_HASH"),
+    passwordHash: requirePasswordHash(),
     jwtSecret: requireEnv("JWT_SECRET"),
     sessionTtlSeconds: parseAdminSessionTtlSeconds(
       process.env.ADMIN_SESSION_TTL
@@ -80,11 +102,12 @@ export function getAdminAuthConfig(): AdminAuthConfig {
   };
 }
 
-/** True when all required admin auth secrets are present. */
+/** True when all required admin auth secrets are present and usable. */
 export function isAdminAuthConfigured(): boolean {
+  const hash = normalizePasswordHash(process.env.ADMIN_PASSWORD_HASH ?? "");
   return Boolean(
     process.env.ADMIN_USERNAME?.trim() &&
-      process.env.ADMIN_PASSWORD_HASH?.trim() &&
+      isBcryptPasswordHash(hash) &&
       process.env.JWT_SECRET?.trim()
   );
 }

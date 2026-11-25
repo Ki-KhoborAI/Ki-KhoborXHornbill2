@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import {
   getAdminDashboardStats,
   type AdminDashboardStats,
@@ -19,6 +20,9 @@ export default function AdminDashboardPage() {
 }
 
 async function DashboardOverview() {
+  // Mongo counts are request-time only (Cache Components / prerender safety).
+  await connection();
+
   let stats: AdminDashboardStats | null = null;
   let loadError: string | null = null;
 
@@ -116,8 +120,9 @@ function Header() {
       </p>
       <h1 className="mt-2 text-2xl font-medium tracking-tight">Overview</h1>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
-        Content inventory for the configured development database. Management
-        modules will unlock create and edit flows in later phases.
+        Content inventory for the configured development database. Create,
+        edit, archive, and delete tools are available under Tribes, Knowledge,
+        Festivals, and Morungs.
       </p>
     </div>
   );

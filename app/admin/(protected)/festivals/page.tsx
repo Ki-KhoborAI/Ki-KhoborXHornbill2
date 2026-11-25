@@ -1,10 +1,6 @@
-import ModulePlaceholder from "../ModulePlaceholder";
+import KnowledgeModulePage from "../knowledge/KnowledgeModulePage";
+import { FESTIVALS_MODULE } from "../knowledge/moduleConfigs";
 
 export default function AdminFestivalsPage() {
-  return (
-    <ModulePlaceholder
-      title="Festivals"
-      description="Festival overview records from the knowledge base. Unverified dates will never be treated as official without editorial approval."
-    />
-  );
+  return <KnowledgeModulePage config={FESTIVALS_MODULE} />;
 }

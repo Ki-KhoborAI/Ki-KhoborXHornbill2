@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --test test/**/*.test.ts",
-    "import:data": "tsx scripts/import-excel.ts"
+    "import:data": "tsx scripts/import-excel.ts",
+    "admin:reset": "tsx scripts/reset-admin-credentials.ts"
   },
   "dependencies": {
     "@google/genai": "^3.3.0",
