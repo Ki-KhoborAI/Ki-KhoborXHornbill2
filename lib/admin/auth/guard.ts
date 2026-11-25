@@ -4,6 +4,7 @@ import {
   getAdminAuthConfig,
   isAdminAuthConfigured,
 } from "./config";
+import { isTrustedAuthOrigin } from "./origin";
 import {
   readAdminSessionCookie,
   verifyAdminSessionToken,
@@ -77,4 +78,41 @@ export async function getAdminSessionFromCookieHeader(
   } catch {
     return null;
   }
+}
+
+function forbiddenOriginResponse(): NextResponse {
+  return NextResponse.json(
+    { error: "Invalid request origin." },
+    { status: 403 }
+  );
+}
+
+/**
+ * Protect state-changing admin APIs: trusted origin + valid session.
+ * Call before any database write on future admin CRUD routes.
+ */
+export async function requireAdminMutation(
+  req: Request
+): Promise<AdminSessionClaims | NextResponse> {
+  let appOrigin: string | null = null;
+
+  if (isAdminAuthConfigured()) {
+    try {
+      appOrigin = getAdminAuthConfig().appOrigin;
+    } catch (error) {
+      if (error instanceof AdminAuthConfigError) {
+        console.error("[AdminAuth] Config error:", error.message);
+        return unavailableResponse();
+      }
+      throw error;
+    }
+  } else {
+    appOrigin = process.env.APP_ORIGIN?.trim() || null;
+  }
+
+  if (!isTrustedAuthOrigin(req, appOrigin)) {
+    return forbiddenOriginResponse();
+  }
+
+  return requireAdminSession(req);
 }

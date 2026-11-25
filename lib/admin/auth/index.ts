@@ -31,6 +31,7 @@ export {
 } from "./rateLimit";
 export {
   requireAdminSession,
+  requireAdminMutation,
   isAdminSessionResponse,
   getAdminSessionFromCookieHeader,
 } from "./guard";

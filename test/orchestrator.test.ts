@@ -10,6 +10,25 @@ import { retrieveFromLocal } from "../lib/retrieval/localRetriever";
 import { orchestrateMessage } from "../lib/orchestrator";
 import type { ConversationTurn, RetrievedRecord } from "../lib/types";
 
+/**
+ * Force the Atlas path to fail closed so these tests exercise the offline
+ * local dataset. Needed once public retrieval requires status=published and
+ * the configured DB may be reachable but have zero published documents.
+ */
+async function withAtlasUnavailable<T>(fn: () => Promise<T>): Promise<T> {
+  const previousDbName = process.env.MONGODB_DB_NAME;
+  const env = process.env as Record<string, string | undefined>;
+  delete env.MONGODB_DB_NAME;
+  await closeDatabase();
+  try {
+    return await fn();
+  } finally {
+    if (previousDbName === undefined) delete env.MONGODB_DB_NAME;
+    else env.MONGODB_DB_NAME = previousDbName;
+    await closeDatabase();
+  }
+}
+
 describe("Orchestration Layer - Context Resolution", () => {
   it("resolves direct tribe mentions without using history", () => {
     const result = resolveContext("Tell me about the Ao tribe.", []);
@@ -320,37 +339,62 @@ describe("Orchestration Layer - End-to-End OrchestrateMessage", () => {
   });
 
   it("orchestrates tribe aggregate queries end-to-end", async () => {
+    await withAtlasUnavailable(async () => {
+      const response = await orchestrateMessage({
+        question: "How many tribes are represented in Nagaland?",
+        conversationHistory: [],
+      });
+      assert.equal(response.dataSourceUsed, "local");
+      assert.equal(response.title, "The 18 Indigenous Tribes of Nagaland");
+      assert.match(response.answer, /18 records/);
+    });
+  });
+
+  it("orchestrates individual tribe queries end-to-end", async () => {
+    await withAtlasUnavailable(async () => {
+      const response = await orchestrateMessage({
+        question: "Tell me about the Angami tribe.",
+        conversationHistory: [],
+      });
+      assert.equal(response.dataSourceUsed, "local");
+      assert.equal(response.title, "Angami Tribe");
+      assert.match(response.answer, /Kohima district/);
+    });
+  });
+
+  it("handles contextual follow-up questions across turns", async () => {
+    await withAtlasUnavailable(async () => {
+      const history: ConversationTurn[] = [
+        { role: "user", text: "Tell me about the Angami tribe." },
+        {
+          role: "assistant",
+          text: "The Angami tribe is one of the recognized indigenous tribes...",
+        },
+      ];
+      const response = await orchestrateMessage({
+        question: "What is their traditional festival?",
+        conversationHistory: history,
+      });
+      assert.equal(response.dataSourceUsed, "local");
+      assert.match(response.title, /Angami/);
+      assert.match(response.answer, /Sekrenyi/);
+    });
+  });
+
+  it("returns missing-info when Atlas is reachable but has no published matches", async () => {
+    // Uses the configured DB (typically empty kikhobor_dev). Published-only
+    // filtering yields no_match, which must not fabricate answers from drafts.
     const response = await orchestrateMessage({
       question: "How many tribes are represented in Nagaland?",
       conversationHistory: [],
     });
-    assert(response.dataSourceUsed === "atlas" || response.dataSourceUsed === "local");
-    assert.equal(response.title, "The 18 Indigenous Tribes of Nagaland");
-    assert.match(response.answer, /18 records/);
-  });
-
-  it("orchestrates individual tribe queries end-to-end", async () => {
-    const response = await orchestrateMessage({
-      question: "Tell me about the Angami tribe.",
-      conversationHistory: [],
-    });
-    assert(response.dataSourceUsed === "atlas" || response.dataSourceUsed === "local");
-    assert.equal(response.title, "Angami Tribe");
-    assert.match(response.answer, /Kohima district/);
-  });
-
-  it("handles contextual follow-up questions across turns", async () => {
-    const history: ConversationTurn[] = [
-      { role: "user", text: "Tell me about the Angami tribe." },
-      { role: "assistant", text: "The Angami tribe is one of the recognized indigenous tribes..." },
-    ];
-    const response = await orchestrateMessage({
-      question: "What is their traditional festival?",
-      conversationHistory: history,
-    });
-    assert(response.dataSourceUsed === "atlas" || response.dataSourceUsed === "local");
-    assert.match(response.title, /Angami/);
-    assert.match(response.answer, /Sekrenyi/);
+    if (response.dataSourceUsed === "local") {
+      // Atlas unreachable in this environment — offline path still valid.
+      assert.equal(response.title, "The 18 Indigenous Tribes of Nagaland");
+      return;
+    }
+    assert.equal(response.title, "Information Not Available");
+    assert.match(response.answer, /I don't have specific information/);
   });
 
   it("handles completely unknown queries by returning honest missing-info", async () => {
