@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import KiKhoborLogo from "./KiKhoborLogo";
 
 export type AskInputProps = {
   id: string;
@@ -49,10 +50,10 @@ export default function AskInput({
         {label}
       </label>
       <span
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[11px] leading-none text-black"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-black"
         aria-hidden="true"
       >
-        ✳
+        <KiKhoborLogo className="h-4 w-4" />
       </span>
       <input
         id={id}

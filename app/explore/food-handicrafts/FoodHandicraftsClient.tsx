@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import KiKhoborConversation from "../../../components/KiKhoborConversation";
 
@@ -9,6 +10,9 @@ const suggestions = [
   "How are traditional Naga handicrafts made?",
   "Where can I find local handicrafts at the festival?",
 ];
+
+/** Shared with Explore landing Food & Handicrafts card; swap later if a dedicated food/loom photo is added. */
+const INTRO_IMAGE = "/images/morungs/DSC09719.webp";
 
 export default function FoodHandicraftsClient() {
   return (
@@ -30,25 +34,47 @@ export default function FoodHandicraftsClient() {
         </div>
       </header>
 
-      <div className="shrink-0 px-5 pt-5 sm:px-8 sm:pt-6">
-        <div className="mx-auto w-full max-w-3xl">
-          <h1 className="text-2xl font-medium tracking-tight sm:text-3xl">
+      {/* Single scroll column (intro + chat) so new turns scroll into view like Morung pages. */}
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+        <div className="mx-auto w-full max-w-3xl px-5 pb-8 pt-5 sm:px-8 sm:pt-6">
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#151515]">
+            <div className="relative flex min-h-[180px] items-end overflow-hidden p-6 sm:min-h-[240px] sm:p-8">
+              <Image
+                src={INTRO_IMAGE}
+                alt="Festival gathering highlighting Naga food and cultural crafts"
+                width={1200}
+                height={700}
+                className="absolute inset-0 h-full w-full object-cover"
+                priority
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent"
+              />
+              <div className="relative z-10">
+                <p className="text-[9px] uppercase tracking-[0.25em] text-white/70">
+                  Explore · Culture
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <h1 className="mt-6 text-2xl font-medium tracking-tight sm:text-3xl">
             Food &amp; Handicrafts
           </h1>
           <p className="mt-2.5 max-w-xl text-sm leading-6 text-white/55">
             Discover traditional Naga food, handicrafts, textiles and cultural
             practices with Ki-Khobor.
           </p>
-        </div>
-      </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <KiKhoborConversation
-          suggestions={suggestions}
-          suggestionsHeading="You could explore"
-          placeholder="Ask about Naga food and handicrafts…"
-          askInputId="food-handicrafts-ask"
-        />
+          <KiKhoborConversation
+            embedded
+            suggestions={suggestions}
+            suggestionsHeading="You could explore"
+            placeholder="Ask about Naga food and handicrafts…"
+            askInputId="food-handicrafts-ask"
+          />
+        </div>
       </div>
 
       <div
