@@ -59,6 +59,7 @@ export default function ExplorePage() {
                   sizes="(max-width: 640px) 100vw, 50vw"
                   className="object-cover transition duration-500 group-hover:scale-[1.02]"
                   priority
+                  decoding="async"
                 />
                 <div
                   aria-hidden="true"
