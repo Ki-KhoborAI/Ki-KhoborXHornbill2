@@ -38,6 +38,21 @@ export default function KnowledgeListClient({
     "all" | KnowledgeCategory
   >(config.lockedCategory ?? "all");
 
+  const statusCounts = useMemo(() => {
+    const next: Record<"all" | AdminContentStatus, number> = {
+      all: items.length,
+      draft: 0,
+      in_review: 0,
+      verified: 0,
+      published: 0,
+      archived: 0,
+    };
+    for (const item of items) {
+      next[item.status] += 1;
+    }
+    return next;
+  }, [items]);
+
   const visible = useMemo(() => {
     return items.filter((item) => {
       if (statusFilter !== "all" && item.status !== statusFilter) return false;
@@ -65,7 +80,7 @@ export default function KnowledgeListClient({
                     : "rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/65 hover:border-white/30 hover:text-white"
                 }
               >
-                {item.label}
+                {item.label} ({statusCounts[item.value]})
               </button>
             );
           })}

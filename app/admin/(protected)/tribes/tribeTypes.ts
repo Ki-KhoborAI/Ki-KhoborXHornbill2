@@ -42,6 +42,34 @@ export const TRIBE_STATUS_TRANSITIONS: Record<
   archived: ["draft"],
 };
 
+/**
+ * Legal one-step advance toward published (empty when already published/archived).
+ * Matches server CONTENT_STATUS_TRANSITIONS — do not skip steps client-side alone.
+ */
+export function nextForwardStatus(
+  status: AdminTribeStatus
+): AdminTribeStatus | null {
+  if (status === "draft") return "in_review";
+  if (status === "in_review") return "verified";
+  if (status === "verified") return "published";
+  return null;
+}
+
+/** Ordered steps from current status up to published (exclusive of current). */
+export function pathToPublished(
+  status: AdminTribeStatus
+): AdminTribeStatus[] {
+  const path: AdminTribeStatus[] = [];
+  let current: AdminTribeStatus | null = status;
+  while (current && current !== "published") {
+    const next = nextForwardStatus(current);
+    if (!next) break;
+    path.push(next);
+    current = next;
+  }
+  return path;
+}
+
 export type TribeFormValues = {
   name: string;
   slug: string;

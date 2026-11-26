@@ -198,9 +198,21 @@ export async function listAdminTribes(options?: {
       ? { status: options.status }
       : {};
 
+  // List UI only needs identity + status fields — skip large text blobs.
   const docs = await db
     .collection(TRIBES_COLLECTION)
-    .find(filter)
+    .find(filter, {
+      projection: {
+        slug: 1,
+        name: 1,
+        regionOrDistricts: 1,
+        status: 1,
+        createdBy: 1,
+        updatedBy: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    })
     .sort({ name: 1 })
     .toArray();
 

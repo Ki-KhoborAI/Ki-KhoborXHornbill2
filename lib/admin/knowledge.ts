@@ -213,9 +213,22 @@ export async function listAdminKnowledge(options?: {
     filter.category = category;
   }
 
+  // List UI only needs identity + status — skip large content/attributes blobs.
   const docs = await db
     .collection(KNOWLEDGE_COLLECTION)
-    .find(filter)
+    .find(filter, {
+      projection: {
+        slug: 1,
+        title: 1,
+        category: 1,
+        subtitle: 1,
+        status: 1,
+        createdBy: 1,
+        updatedBy: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    })
     .sort({ title: 1 })
     .toArray();
 

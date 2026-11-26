@@ -35,6 +35,9 @@ export default function KnowledgeEditor({
       ? knowledgeToFormValues(initialItem)
       : emptyKnowledgeFormValues(config.lockedCategory)
   );
+  const [savedStatus, setSavedStatus] = useState<AdminContentStatus>(
+    initialItem?.status ?? "draft"
+  );
   const [status, setStatus] = useState<AdminContentStatus>(
     initialItem?.status ?? "draft"
   );
@@ -42,12 +45,17 @@ export default function KnowledgeEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  // Options must come from the last saved status — not the pending dropdown
+  // value — or users can select draft→verified/published and the API rejects it.
   const allowedNextStatuses = useMemo(() => {
     if (mode === "create") return [] as AdminContentStatus[];
     return Array.from(
-      new Set<AdminContentStatus>([status, ...STATUS_TRANSITIONS[status]])
+      new Set<AdminContentStatus>([
+        savedStatus,
+        ...STATUS_TRANSITIONS[savedStatus],
+      ])
     );
-  }, [mode, status]);
+  }, [mode, savedStatus]);
 
   const apiCategorySuffix = categoryQuery(config.lockedCategory);
 
@@ -97,6 +105,8 @@ export default function KnowledgeEditor({
       }
 
       const body = (await response.json()) as { item: AdminKnowledgeRecord };
+      setStatus(body.item.status);
+      setSavedStatus(body.item.status);
       setMessage(mode === "create" ? "Item created." : "Item saved.");
       router.replace(
         `${config.basePath}/${encodeURIComponent(body.item.slug)}`
@@ -127,6 +137,7 @@ export default function KnowledgeEditor({
       }
       const body = (await response.json()) as { item: AdminKnowledgeRecord };
       setStatus(body.item.status);
+      setSavedStatus(body.item.status);
       setMessage("Item archived.");
       router.refresh();
     } catch {
@@ -169,7 +180,10 @@ export default function KnowledgeEditor({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 max-w-3xl space-y-5">
+    <form
+      onSubmit={handleSubmit}
+      className="mt-4 max-w-3xl space-y-5 pb-28 sm:mt-6 sm:pb-8"
+    >
       <label className="block text-xs uppercase tracking-[0.15em] text-white/45">
         Title
         <input
@@ -290,55 +304,55 @@ export default function KnowledgeEditor({
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-60"
-        >
-          {pending
-            ? "Saving…"
-            : mode === "create"
-              ? "Create item"
-              : "Save changes"}
-        </button>
-        <Link
-          href={config.basePath}
-          className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/70 hover:border-white/30 hover:text-white"
-        >
-          Back to list
-        </Link>
-      </div>
-
-      {mode === "edit" && initialItem ? (
-        <div className="mt-8 space-y-3 border-t border-white/10 pt-6">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
-            Danger zone
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {status !== "archived" ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={handleArchive}
-                className="rounded-full border border-amber-300/30 px-4 py-2 text-sm text-amber-200 hover:border-amber-200/50 disabled:opacity-60"
-              >
-                Archive item
-              </button>
-            ) : null}
-            {status === "draft" || status === "archived" ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={handlePermanentDelete}
-                className="rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-300 hover:border-red-300/60 disabled:opacity-60"
-              >
-                Delete permanently
-              </button>
-            ) : null}
+      {/* Sticky bottom dock on phone so Save / Archive / Delete stay reachable. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b0b0b]/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:static sm:inset-auto sm:mt-2 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+        <div className="mx-auto flex max-w-3xl flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <button
+              type="submit"
+              disabled={pending}
+              className="min-h-11 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-60"
+            >
+              {pending
+                ? "Saving…"
+                : mode === "create"
+                  ? "Create item"
+                  : "Save changes"}
+            </button>
+            <Link
+              href={config.basePath}
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/15 px-4 py-2.5 text-sm text-white/70 hover:border-white/30 hover:text-white"
+            >
+              Back to list
+            </Link>
           </div>
+
+          {mode === "edit" && initialItem ? (
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              {status !== "archived" ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={handleArchive}
+                  className="min-h-11 rounded-full border border-amber-300/30 px-4 py-2.5 text-sm text-amber-200 hover:border-amber-200/50 disabled:opacity-60"
+                >
+                  Archive
+                </button>
+              ) : null}
+              {status === "draft" || status === "archived" ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={handlePermanentDelete}
+                  className="min-h-11 rounded-full border border-red-400/40 px-4 py-2.5 text-sm text-red-300 hover:border-red-300/60 disabled:opacity-60"
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </form>
   );
 }

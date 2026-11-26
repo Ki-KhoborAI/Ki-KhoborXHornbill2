@@ -24,6 +24,21 @@ export default function TribesListClient({
 }) {
   const [filter, setFilter] = useState<"all" | AdminTribeStatus>("all");
 
+  const counts = useMemo(() => {
+    const next: Record<"all" | AdminTribeStatus, number> = {
+      all: tribes.length,
+      draft: 0,
+      in_review: 0,
+      verified: 0,
+      published: 0,
+      archived: 0,
+    };
+    for (const tribe of tribes) {
+      next[tribe.status] += 1;
+    }
+    return next;
+  }, [tribes]);
+
   const visible = useMemo(() => {
     if (filter === "all") return tribes;
     return tribes.filter((tribe) => tribe.status === filter);
@@ -46,7 +61,7 @@ export default function TribesListClient({
                     : "rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/65 hover:border-white/30 hover:text-white"
                 }
               >
-                {item.label}
+                {item.label} ({counts[item.value]})
               </button>
             );
           })}
@@ -62,7 +77,9 @@ export default function TribesListClient({
       <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#151515]">
         {visible.length === 0 ? (
           <p className="px-5 py-8 text-sm text-white/50">
-            No tribes match this filter.
+            {tribes.length === 0
+              ? "No tribes yet. Create one to get started."
+              : `No tribes in “${FILTERS.find((item) => item.value === filter)?.label ?? filter}”. New tribes appear under All / Draft until you advance their status.`}
           </p>
         ) : (
           <ul className="divide-y divide-white/5">

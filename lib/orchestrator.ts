@@ -1,5 +1,8 @@
 import { resolveContext } from "./contextResolver";
-import { classifyIntent } from "./intentClassifier";
+import {
+  classifyIntent,
+  classifyIntentDeterministically,
+} from "./intentClassifier";
 import {
   buildFestivalActivitiesResponse,
   buildGreetingResponse,
@@ -12,6 +15,7 @@ import {
 } from "./responseBuilder";
 import { retrieveFromAtlas } from "./retrieval/atlasRetriever";
 import { retrieveFromLocal } from "./retrieval/localRetriever";
+import { resolvePublishedTribeSlug } from "./retrieval/publishedTribeLookup";
 import type { AssistantResponse, OrchestratorRequest } from "./types";
 
 /**
@@ -32,7 +36,25 @@ export async function orchestrateMessage(
 
   // 1. Resolve conversational context and pronouns
   const context = resolveContext(rawQuestion, conversationHistory, activeTribe);
-  const { resolvedQuestion, detectedTribeSlug } = context;
+  const { resolvedQuestion } = context;
+  let detectedTribeSlug = context.detectedTribeSlug;
+
+  // Match admin-published tribes when the static 18-slug map misses.
+  // Skip DB lookup for greetings / out-of-scope to keep those paths fast.
+  if (!detectedTribeSlug) {
+    const quickIntent = classifyIntentDeterministically(resolvedQuestion, null);
+    const skipPublishedLookup =
+      quickIntent === "CONVERSATIONAL" ||
+      quickIntent === "IDENTITY_QUERY" ||
+      quickIntent === "OUT_OF_SCOPE_PRIVATE" ||
+      quickIntent === "OUT_OF_SCOPE_POLITICAL" ||
+      quickIntent === "OUT_OF_SCOPE_PACKING" ||
+      quickIntent === "FACTUAL_ACTIVITIES";
+
+    if (!skipPublishedLookup) {
+      detectedTribeSlug = await resolvePublishedTribeSlug(resolvedQuestion);
+    }
+  }
 
   // 2. Classify intent (Tier 1 deterministic -> Tier 2 Gemini)
   const intent = await classifyIntent(resolvedQuestion, detectedTribeSlug);

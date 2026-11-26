@@ -98,7 +98,7 @@ async function ProtectedAdminShell({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-white/10 px-5 py-4 md:hidden">
+          <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0b0b]/95 px-4 py-3 backdrop-blur-md md:hidden">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold tracking-[0.12em]">
@@ -110,12 +110,14 @@ async function ProtectedAdminShell({
               </div>
               <AdminLogoutButton />
             </div>
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 text-sm">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 text-sm">
               <MobileAdminLinks />
             </div>
           </header>
 
-          <main className="flex-1 px-5 py-8">{children}</main>
+          <main className="flex-1 px-4 py-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-8">
+            {children}
+          </main>
         </div>
       </div>
     </div>

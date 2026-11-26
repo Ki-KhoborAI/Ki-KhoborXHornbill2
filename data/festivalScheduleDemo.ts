@@ -6,6 +6,10 @@
  * when replacing with verified programme data from festivalSchedule.ts.
  *
  * Do not treat these titles, venues, or times as real Hornbill programme information.
+ *
+ * IMPORTANT: Never bake Date.now() into a module-level constant. Server and
+ * client would disagree and cause hydration mismatches. Build from an explicit
+ * anchor instead (see buildFestivalScheduleDemo).
  */
 
 import type {
@@ -35,6 +39,14 @@ const DEMO_TITLES = [
   "Culinary tasting",
 ] as const;
 
+/**
+ * Stable anchor for the first paint (SSR + hydration).
+ * Must not use Date.now() — only a fixed instant.
+ */
+export const FESTIVAL_SCHEDULE_DEMO_SSR_ANCHOR = new Date(
+  "2026-12-01T12:00:00.000+05:30"
+);
+
 /** Format an absolute instant as ISO-8601 with explicit +05:30 (Asia/Kolkata). */
 function toKolkataIso(date: Date): string {
   const parts = Object.fromEntries(
@@ -56,27 +68,31 @@ function toKolkataIso(date: Date): string {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}+05:30`;
 }
 
-function hoursFromNow(hours: number): Date {
-  return new Date(Date.now() + hours * 60 * 60 * 1000);
+function hoursFromAnchor(anchorMs: number, hours: number): Date {
+  return new Date(anchorMs + hours * 60 * 60 * 1000);
 }
 
 function demoEvent(
+  anchorMs: number,
   id: string,
   name: string,
   venue: string,
-  startHoursFromNow: number,
-  endHoursFromNow: number
+  startHoursFromAnchor: number,
+  endHoursFromAnchor: number
 ): FestivalScheduleEvent {
   return {
     id,
     name,
     venue,
-    start: toKolkataIso(hoursFromNow(startHoursFromNow)),
-    end: toKolkataIso(hoursFromNow(endHoursFromNow)),
+    start: toKolkataIso(hoursFromAnchor(anchorMs, startHoursFromAnchor)),
+    end: toKolkataIso(hoursFromAnchor(anchorMs, endHoursFromAnchor)),
   };
 }
 
-function buildDemoDay(day: FestivalDayNumber): FestivalScheduleDay {
+function buildDemoDay(
+  anchorMs: number,
+  day: FestivalDayNumber
+): FestivalScheduleDay {
   const titleA = DEMO_TITLES[(day - 1) % DEMO_TITLES.length];
   const titleB = DEMO_TITLES[day % DEMO_TITLES.length];
   const titleC = DEMO_TITLES[(day + 2) % DEMO_TITLES.length];
@@ -84,15 +100,16 @@ function buildDemoDay(day: FestivalDayNumber): FestivalScheduleDay {
   const venueB = DEMO_VENUES[day % DEMO_VENUES.length];
   const venueC = DEMO_VENUES[(day + 1) % DEMO_VENUES.length];
 
-  // Day 1 includes completed, live, and upcoming examples relative to "now".
+  // Day 1 includes completed, live, and upcoming examples relative to anchor.
   if (day === 1) {
     return {
       day,
       events: [
-        demoEvent(`demo-d1-completed`, titleA, venueA, -3, -1),
-        demoEvent(`demo-d1-live`, titleB, venueB, -0.5, 1.5),
-        demoEvent(`demo-d1-upcoming`, titleC, venueC, 2, 3.5),
+        demoEvent(anchorMs, `demo-d1-completed`, titleA, venueA, -3, -1),
+        demoEvent(anchorMs, `demo-d1-live`, titleB, venueB, -0.5, 1.5),
+        demoEvent(anchorMs, `demo-d1-upcoming`, titleC, venueC, 2, 3.5),
         demoEvent(
+          anchorMs,
           `demo-d1-upcoming-late`,
           DEMO_TITLES[4],
           DEMO_VENUES[4],
@@ -110,6 +127,7 @@ function buildDemoDay(day: FestivalDayNumber): FestivalScheduleDay {
     day,
     events: [
       demoEvent(
+        anchorMs,
         `demo-d${day}-b`,
         titleB,
         venueB,
@@ -117,6 +135,7 @@ function buildDemoDay(day: FestivalDayNumber): FestivalScheduleDay {
         dayOffset + 5.5
       ),
       demoEvent(
+        anchorMs,
         `demo-d${day}-a`,
         titleA,
         venueA,
@@ -124,6 +143,7 @@ function buildDemoDay(day: FestivalDayNumber): FestivalScheduleDay {
         dayOffset + 2.5
       ),
       demoEvent(
+        anchorMs,
         `demo-d${day}-c`,
         titleC,
         venueC,
@@ -134,8 +154,21 @@ function buildDemoDay(day: FestivalDayNumber): FestivalScheduleDay {
   };
 }
 
+/** Build demo days relative to an explicit anchor (never implicit Date.now()). */
+export function buildFestivalScheduleDemo(
+  anchor: Date
+): FestivalScheduleDay[] {
+  const anchorMs = anchor.getTime();
+  return ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as FestivalDayNumber[]).map((day) =>
+    buildDemoDay(anchorMs, day)
+  );
+}
+
 export const USE_FESTIVAL_SCHEDULE_DEMO = true;
 
-export const festivalScheduleDemo: FestivalScheduleDay[] = (
-  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as FestivalDayNumber[]
-).map(buildDemoDay);
+/**
+ * Deterministic demo used for SSR + hydration first paint.
+ * After mount, FestivalSchedule rebuilds from the live clock.
+ */
+export const festivalScheduleDemo: FestivalScheduleDay[] =
+  buildFestivalScheduleDemo(FESTIVAL_SCHEDULE_DEMO_SSR_ANCHOR);
