@@ -76,19 +76,24 @@ export default function FestivalBackground() {
           {mountedIndexes.map((index) => {
             const slide = SLIDES[index];
             if (!slide || failed.has(index)) return null;
+            const isActive = index === activeIndex;
             return (
               <Image
                 key={slide.src}
                 src={slide.src}
                 alt={slide.alt}
                 fill
-                priority={index === activeIndex}
-                sizes="(max-width: 768px) 100vw, 1024px"
+                // Only the visible slide is high-priority; the next slide
+                // preloads quietly so slow cellular never downloads all 27.
+                priority={isActive}
+                loading={isActive ? "eager" : "lazy"}
+                decoding="async"
+                sizes="(max-width: 768px) 100vw, 960px"
                 className={`object-cover ${
                   reduceMotion
                     ? ""
                     : "transition-opacity duration-1000 ease-in-out"
-                } ${index === activeIndex ? "opacity-100" : "opacity-0"}`}
+                } ${isActive ? "opacity-100" : "opacity-0"}`}
                 onError={() => {
                   setFailed((current) => {
                     if (current.has(index)) return current;

@@ -45,11 +45,12 @@ export default function EventsCategoryClient({
                   <Image
                     src={category.image}
                     alt=""
-                    width={1200}
-                    height={700}
+                    width={800}
+                    height={450}
                     className="absolute inset-0 h-full w-full object-cover"
                     onError={() => setImageFailed(true)}
                     priority
+                    decoding="async"
                   />
                 ) : (
                   <div

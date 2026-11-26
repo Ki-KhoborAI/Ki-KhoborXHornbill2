@@ -25,6 +25,8 @@ export default function MorungCardImage({
           src={imageSrc}
           alt={alt}
           fill
+          loading="lazy"
+          decoding="async"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover"
           onError={() => setImageFailed(true)}
