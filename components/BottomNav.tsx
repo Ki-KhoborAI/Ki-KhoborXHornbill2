@@ -13,6 +13,11 @@ const navItems = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  // Admin has its own chrome; skip the public tab bar (faster + no overlap).
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
+
   const routeLocationId = pathname.match(/^\/experience\/([^/]+)\/?$/)?.[1];
   const routeLocation = routeLocationId
     ? locations[routeLocationId.toLowerCase()]

@@ -36,6 +36,8 @@ export type AdminDashboardStats = {
   };
 };
 
+type StatusCountRow = { _id: unknown; count: number };
+
 function emptyBreakdown(): AdminStatusBreakdown {
   return {
     draft: 0,
@@ -60,62 +62,113 @@ function normalizeStatusKey(raw: unknown): AdminStatusCountKey {
   return "missing";
 }
 
+function breakdownFromRows(rows: StatusCountRow[]): {
+  total: number;
+  byStatus: AdminStatusBreakdown;
+} {
+  const byStatus = emptyBreakdown();
+  let total = 0;
+  for (const row of rows) {
+    const key = normalizeStatusKey(
+      row._id === "__missing__" ? undefined : row._id
+    );
+    const count = typeof row.count === "number" ? row.count : 0;
+    byStatus[key] += count;
+    total += count;
+  }
+  return { total, byStatus };
+}
+
+const STATUS_GROUP_STAGE = {
+  $group: {
+    _id: { $ifNull: ["$status", "__missing__"] },
+    count: { $sum: 1 },
+  },
+} as const;
+
+/**
+ * One aggregation pass — total is the sum of status buckets (no extra countDocuments).
+ */
 async function countByStatus(
   db: Db,
   collectionName: string,
   extraFilter: Record<string, unknown> = {}
 ): Promise<{ total: number; byStatus: AdminStatusBreakdown }> {
   const collection = db.collection(collectionName);
-  const filter = { ...extraFilter };
-  const total = await collection.countDocuments(filter);
+  const pipeline: Record<string, unknown>[] = [];
+  if (Object.keys(extraFilter).length > 0) {
+    pipeline.push({ $match: extraFilter });
+  }
+  pipeline.push(STATUS_GROUP_STAGE);
+
   const rows = await collection
-    .aggregate<{ _id: unknown; count: number }>([
-      { $match: filter },
+    .aggregate<StatusCountRow>(pipeline)
+    .toArray();
+
+  return breakdownFromRows(rows);
+}
+
+/**
+ * Single knowledge_items round-trip for all / festivals / morungs breakdowns.
+ */
+async function collectKnowledgeDashboardStats(db: Db): Promise<{
+  knowledgeItems: { total: number; byStatus: AdminStatusBreakdown };
+  festivals: { total: number; byStatus: AdminStatusBreakdown };
+  morungs: { total: number; byStatus: AdminStatusBreakdown };
+}> {
+  const [facet] = await db
+    .collection("knowledge_items")
+    .aggregate<{
+      all: StatusCountRow[];
+      festivals: StatusCountRow[];
+      morungs: StatusCountRow[];
+    }>([
       {
-        $group: {
-          _id: { $ifNull: ["$status", "__missing__"] },
-          count: { $sum: 1 },
+        $facet: {
+          all: [STATUS_GROUP_STAGE],
+          festivals: [
+            { $match: { category: "festival_overview" } },
+            STATUS_GROUP_STAGE,
+          ],
+          morungs: [
+            { $match: { category: "morungs_overview" } },
+            STATUS_GROUP_STAGE,
+          ],
         },
       },
     ])
     .toArray();
 
-  const byStatus = emptyBreakdown();
-  for (const row of rows) {
-    const key = normalizeStatusKey(
-      row._id === "__missing__" ? undefined : row._id
-    );
-    byStatus[key] += row.count;
-  }
-
-  return { total, byStatus };
+  return {
+    knowledgeItems: breakdownFromRows(facet?.all ?? []),
+    festivals: breakdownFromRows(facet?.festivals ?? []),
+    morungs: breakdownFromRows(facet?.morungs ?? []),
+  };
 }
 
 /**
  * Build dashboard statistics from a Db handle.
- * Read-only: countDocuments + aggregate only.
+ * Read-only: aggregate only (no writes, no redundant countDocuments).
  */
 export async function collectAdminDashboardStats(
   db: Db,
   databaseName: string
 ): Promise<AdminDashboardStats> {
-  const [tribes, knowledgeItems, festivals, morungs] = await Promise.all([
+  const [tribes, knowledge] = await Promise.all([
     countByStatus(db, "tribes"),
-    countByStatus(db, "knowledge_items"),
-    countByStatus(db, "knowledge_items", { category: "festival_overview" }),
-    countByStatus(db, "knowledge_items", { category: "morungs_overview" }),
+    collectKnowledgeDashboardStats(db),
   ]);
 
   return {
     database: databaseName,
     tribes,
-    knowledgeItems,
+    knowledgeItems: knowledge.knowledgeItems,
     festivals: {
-      ...festivals,
+      ...knowledge.festivals,
       category: "festival_overview",
     },
     morungs: {
-      ...morungs,
+      ...knowledge.morungs,
       category: "morungs_overview",
     },
   };

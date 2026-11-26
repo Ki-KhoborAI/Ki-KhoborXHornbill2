@@ -65,8 +65,8 @@ export function resolveContext(
     const historyTribeSlug = findRecentTribeFromHistory(conversationHistory);
     const targetTribeSlug = historyTribeSlug || (activeTribe ? activeTribe.toLowerCase() : null);
 
-    if (targetTribeSlug && TRIBE_NAMES[targetTribeSlug]) {
-      const tribeName = TRIBE_NAMES[targetTribeSlug];
+    if (targetTribeSlug) {
+      const tribeName = TRIBE_NAMES[targetTribeSlug] ?? targetTribeSlug;
 
       // Rewrite pronouns to be explicit
       let rewritten = trimmedQuestion;

@@ -11,6 +11,7 @@ import {
 import type { FestivalDayNumber } from "../../data/festivalSchedule";
 import { festivalSchedule } from "../../data/festivalSchedule";
 import {
+  buildFestivalScheduleDemo,
   festivalScheduleDemo,
   USE_FESTIVAL_SCHEDULE_DEMO,
 } from "../../data/festivalScheduleDemo";
@@ -27,16 +28,11 @@ const STATUS_LABEL: Record<EventStatus, string> = {
   completed: "Completed",
 };
 
-/** Demo data is isolated; flip the flag / remove the import when official data is ready. */
-const scheduleSource = USE_FESTIVAL_SCHEDULE_DEMO
-  ? festivalScheduleDemo
-  : festivalSchedule;
-
-const DAYS = scheduleSource.map((item) => item.day);
-
 export default function FestivalSchedule() {
   const [day, setDay] = useState<FestivalDayNumber>(1);
   const [now, setNow] = useState<Date | null>(null);
+  /** Set once after mount so demo times stay fixed while live status still updates. */
+  const [demoAnchor, setDemoAnchor] = useState<Date | null>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
@@ -46,15 +42,16 @@ export default function FestivalSchedule() {
   const listboxId = useId();
 
   useEffect(() => {
+    const mountedAt = new Date();
+    setDemoAnchor(mountedAt);
+    setNow(mountedAt);
     const tick = () => setNow(new Date());
-    const initialFrameId = window.requestAnimationFrame(tick);
     const intervalId = window.setInterval(tick, 30_000);
     const onVisible = () => {
       if (document.visibilityState === "visible") tick();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
-      window.cancelAnimationFrame(initialFrameId);
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -94,6 +91,16 @@ export default function FestivalSchedule() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  // Demo: first paint uses a fixed anchor (SSR === client). After mount, rebuild
+  // once from wall clock so Live/Completed badges work without drifting labels.
+  const scheduleSource = useMemo(() => {
+    if (!USE_FESTIVAL_SCHEDULE_DEMO) return festivalSchedule;
+    if (!demoAnchor) return festivalScheduleDemo;
+    return buildFestivalScheduleDemo(demoAnchor);
+  }, [demoAnchor]);
+
+  const DAYS = scheduleSource.map((item) => item.day);
 
   const selected =
     scheduleSource.find((item) => item.day === day) ?? scheduleSource[0];

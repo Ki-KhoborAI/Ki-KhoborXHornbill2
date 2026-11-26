@@ -41,23 +41,22 @@ afterEach(async () => {
   await closeDatabase();
 });
 
+type StatusRow = { _id: unknown; count: number };
+
 type MockCollection = {
-  countDocuments: (filter?: Record<string, unknown>) => Promise<number>;
-  aggregate: (pipeline: unknown[]) => { toArray: () => Promise<Array<{ _id: unknown; count: number }>> };
+  aggregate: (pipeline: unknown[]) => {
+    toArray: () => Promise<unknown[]>;
+  };
   insertOne?: () => Promise<never>;
   updateOne?: () => Promise<never>;
   deleteOne?: () => Promise<never>;
 };
 
 function createMockDb(options: {
-  tribesTotal?: number;
-  tribesStatuses?: Array<{ _id: unknown; count: number }>;
-  knowledgeTotal?: number;
-  knowledgeStatuses?: Array<{ _id: unknown; count: number }>;
-  festivalTotal?: number;
-  festivalStatuses?: Array<{ _id: unknown; count: number }>;
-  morungTotal?: number;
-  morungStatuses?: Array<{ _id: unknown; count: number }>;
+  tribesStatuses?: StatusRow[];
+  knowledgeStatuses?: StatusRow[];
+  festivalStatuses?: StatusRow[];
+  morungStatuses?: StatusRow[];
 }): { db: Db; tracker: { writeAttempts: number } } {
   const tracker = { writeAttempts: 0 };
 
@@ -67,7 +66,6 @@ function createMockDb(options: {
   };
 
   const tribes: MockCollection = {
-    countDocuments: async () => options.tribesTotal ?? 0,
     aggregate: () => ({
       toArray: async () => options.tribesStatuses ?? [],
     }),
@@ -77,25 +75,16 @@ function createMockDb(options: {
   };
 
   const knowledge: MockCollection = {
-    async countDocuments(filter = {}) {
-      if (filter.category === "festival_overview") {
-        return options.festivalTotal ?? 0;
-      }
-      if (filter.category === "morungs_overview") {
-        return options.morungTotal ?? 0;
-      }
-      return options.knowledgeTotal ?? 0;
-    },
-    aggregate(pipeline) {
-      const match = (pipeline[0] as { $match?: Record<string, unknown> })?.$match ?? {};
-      let rows: Array<{ _id: unknown; count: number }> = options.knowledgeStatuses ?? [];
-      if (match.category === "festival_overview") {
-        rows = options.festivalStatuses ?? [];
-      } else if (match.category === "morungs_overview") {
-        rows = options.morungStatuses ?? [];
-      }
+    aggregate() {
+      // One $facet round-trip for all / festivals / morungs.
       return {
-        toArray: async () => rows,
+        toArray: async () => [
+          {
+            all: options.knowledgeStatuses ?? [],
+            festivals: options.festivalStatuses ?? [],
+            morungs: options.morungStatuses ?? [],
+          },
+        ],
       };
     },
     insertOne: refuseWrite,
@@ -125,19 +114,15 @@ describe("Admin dashboard stats — collectors", () => {
 
   it("aggregates real counts and status breakdowns without writing", async () => {
     const { db, tracker } = createMockDb({
-      tribesTotal: 2,
       tribesStatuses: [
         { _id: "draft", count: 1 },
         { _id: "published", count: 1 },
       ],
-      knowledgeTotal: 5,
       knowledgeStatuses: [
         { _id: "draft", count: 3 },
         { _id: "__missing__", count: 2 },
       ],
-      festivalTotal: 2,
       festivalStatuses: [{ _id: "draft", count: 2 }],
-      morungTotal: 1,
       morungStatuses: [{ _id: "in_review", count: 1 }],
     });
 

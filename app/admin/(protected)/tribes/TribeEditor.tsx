@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   TRIBE_STATUS_LABELS,
-  TRIBE_STATUS_TRANSITIONS,
   emptyTribeFormValues,
+  nextForwardStatus,
+  pathToPublished,
   readApiError,
   tribeToFormValues,
   type AdminTribeRecord,
@@ -37,6 +38,15 @@ const FIELD_CONFIG: Array<{
   { key: "source", label: "Source", multiline: true },
 ];
 
+function advanceLabel(status: AdminTribeStatus): string | null {
+  const next = nextForwardStatus(status);
+  if (!next) return null;
+  if (next === "in_review") return "Send to review";
+  if (next === "verified") return "Mark verified";
+  if (next === "published") return "Publish";
+  return null;
+}
+
 export default function TribeEditor({
   mode,
   initialTribe = null,
@@ -48,24 +58,54 @@ export default function TribeEditor({
   const [values, setValues] = useState<TribeFormValues>(
     initialTribe ? tribeToFormValues(initialTribe) : emptyTribeFormValues()
   );
-  const [status, setStatus] = useState<AdminTribeStatus>(
+  const [savedStatus, setSavedStatus] = useState<AdminTribeStatus>(
     initialTribe?.status ?? "draft"
+  );
+  const [activeSlug, setActiveSlug] = useState<string | null>(
+    initialTribe?.slug ?? null
   );
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const allowedNextStatuses = useMemo(() => {
-    if (mode === "create") return [] as AdminTribeStatus[];
-    const unique = new Set<AdminTribeStatus>([
-      status,
-      ...TRIBE_STATUS_TRANSITIONS[status],
-    ]);
-    return Array.from(unique);
-  }, [mode, status]);
+  const forwardLabel = advanceLabel(savedStatus);
+  const canPublish =
+    savedStatus === "draft" ||
+    savedStatus === "in_review" ||
+    savedStatus === "verified";
+  const canRestoreDraft = savedStatus === "archived";
+  const canUnpublish = savedStatus === "published";
 
   function updateField(key: keyof TribeFormValues, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function applyTribe(tribe: AdminTribeRecord, notice: string) {
+    setActiveSlug(tribe.slug);
+    setSavedStatus(tribe.status);
+    setValues(tribeToFormValues(tribe));
+    setMessage(notice);
+    router.replace(`/admin/tribes/${encodeURIComponent(tribe.slug)}`);
+    router.refresh();
+  }
+
+  async function patchStatus(
+    slug: string,
+    status: AdminTribeStatus
+  ): Promise<AdminTribeRecord> {
+    const response = await fetch(
+      `/api/admin/tribes/${encodeURIComponent(slug)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status }),
+      }
+    );
+    if (!response.ok) {
+      throw new Error(await readApiError(response));
+    }
+    const body = (await response.json()) as { tribe: AdminTribeRecord };
+    return body.tribe;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -75,6 +115,7 @@ export default function TribeEditor({
     setPending(true);
 
     try {
+      // Save fields only — status is changed via the action buttons below.
       const payload = {
         name: values.name.trim(),
         slug: values.slug.trim() || undefined,
@@ -85,7 +126,6 @@ export default function TribeEditor({
         traditionalAttire: values.traditionalAttire,
         culturalSignificance: values.culturalSignificance,
         source: values.source,
-        ...(mode === "edit" ? { status } : {}),
       };
 
       const response =
@@ -96,7 +136,7 @@ export default function TribeEditor({
               body: JSON.stringify(payload),
             })
           : await fetch(
-              `/api/admin/tribes/${encodeURIComponent(initialTribe!.slug)}`,
+              `/api/admin/tribes/${encodeURIComponent(activeSlug ?? initialTribe!.slug)}`,
               {
                 method: "PATCH",
                 headers: { "content-type": "application/json" },
@@ -110,9 +150,10 @@ export default function TribeEditor({
       }
 
       const body = (await response.json()) as { tribe: AdminTribeRecord };
-      setMessage(mode === "create" ? "Tribe created." : "Tribe saved.");
-      router.replace(`/admin/tribes/${encodeURIComponent(body.tribe.slug)}`);
-      router.refresh();
+      applyTribe(
+        body.tribe,
+        mode === "create" ? "Tribe created as draft." : "Tribe saved."
+      );
     } catch {
       setError("Unable to save tribe.");
     } finally {
@@ -120,16 +161,99 @@ export default function TribeEditor({
     }
   }
 
+  async function handleAdvanceOneStep() {
+    const slug = activeSlug ?? initialTribe?.slug;
+    const next = nextForwardStatus(savedStatus);
+    if (!slug || !next) return;
+
+    setError(null);
+    setMessage(null);
+    setPending(true);
+    try {
+      const tribe = await patchStatus(slug, next);
+      applyTribe(tribe, `Status updated to ${TRIBE_STATUS_LABELS[tribe.status]}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to update status.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handlePublish() {
+    const slug = activeSlug ?? initialTribe?.slug;
+    if (!slug || !canPublish) return;
+
+    const steps = pathToPublished(savedStatus);
+    if (steps.length === 0) return;
+
+    setError(null);
+    setMessage(null);
+    setPending(true);
+    try {
+      let tribe: AdminTribeRecord | null = null;
+      for (const step of steps) {
+        tribe = await patchStatus(slug, step);
+      }
+      if (tribe) {
+        applyTribe(tribe, "Tribe published. It is now available to Ask.");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to publish. Save any edits, then try again."
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleSendToReviewFromPublished() {
+    const slug = activeSlug ?? initialTribe?.slug;
+    if (!slug || !canUnpublish) return;
+
+    setError(null);
+    setMessage(null);
+    setPending(true);
+    try {
+      const tribe = await patchStatus(slug, "in_review");
+      applyTribe(tribe, "Tribe moved back to in review.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to update status.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleRestoreDraft() {
+    const slug = activeSlug ?? initialTribe?.slug;
+    if (!slug || !canRestoreDraft) return;
+
+    setError(null);
+    setMessage(null);
+    setPending(true);
+    try {
+      const tribe = await patchStatus(slug, "draft");
+      applyTribe(tribe, "Tribe restored to draft.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to restore draft.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function handleArchive() {
-    if (!initialTribe) return;
-    if (!window.confirm(`Archive "${initialTribe.name}"?`)) return;
+    const slug = activeSlug ?? initialTribe?.slug;
+    const name = values.name || initialTribe?.name || "this tribe";
+    if (!slug) return;
+    if (!window.confirm(`Archive "${name}"?`)) return;
 
     setError(null);
     setMessage(null);
     setPending(true);
     try {
       const response = await fetch(
-        `/api/admin/tribes/${encodeURIComponent(initialTribe.slug)}`,
+        `/api/admin/tribes/${encodeURIComponent(slug)}`,
         { method: "DELETE" }
       );
       if (!response.ok) {
@@ -137,9 +261,7 @@ export default function TribeEditor({
         return;
       }
       const body = (await response.json()) as { tribe: AdminTribeRecord };
-      setStatus(body.tribe.status);
-      setMessage("Tribe archived.");
-      router.refresh();
+      applyTribe(body.tribe, "Tribe archived.");
     } catch {
       setError("Unable to archive tribe.");
     } finally {
@@ -148,10 +270,12 @@ export default function TribeEditor({
   }
 
   async function handlePermanentDelete() {
-    if (!initialTribe) return;
+    const slug = activeSlug ?? initialTribe?.slug;
+    const name = values.name || initialTribe?.name || "this tribe";
+    if (!slug) return;
     if (
       !window.confirm(
-        `Permanently delete "${initialTribe.name}"? This cannot be undone.`
+        `Permanently delete "${name}"? This cannot be undone.`
       )
     ) {
       return;
@@ -162,7 +286,7 @@ export default function TribeEditor({
     setPending(true);
     try {
       const response = await fetch(
-        `/api/admin/tribes/${encodeURIComponent(initialTribe.slug)}?permanent=1`,
+        `/api/admin/tribes/${encodeURIComponent(slug)}?permanent=1`,
         { method: "DELETE" }
       );
       if (!response.ok) {
@@ -178,8 +302,112 @@ export default function TribeEditor({
     }
   }
 
+  const actionButtons = mode === "edit" ? (
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <button
+        type="submit"
+        disabled={pending}
+        className="min-h-11 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-60"
+      >
+        {pending ? "Working…" : "Save"}
+      </button>
+
+      {forwardLabel && savedStatus !== "verified" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleAdvanceOneStep}
+          className="min-h-11 rounded-full border border-white/20 px-4 py-2.5 text-sm text-white hover:border-white/40 disabled:opacity-60"
+        >
+          {forwardLabel}
+        </button>
+      ) : null}
+
+      {canPublish ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handlePublish}
+          className="min-h-11 rounded-full border border-emerald-300/40 px-4 py-2.5 text-sm text-emerald-200 hover:border-emerald-200/60 disabled:opacity-60"
+        >
+          Publish
+        </button>
+      ) : null}
+
+      {canUnpublish ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleSendToReviewFromPublished}
+          className="min-h-11 rounded-full border border-white/20 px-4 py-2.5 text-sm text-white/80 hover:border-white/40 disabled:opacity-60"
+        >
+          Move to review
+        </button>
+      ) : null}
+
+      {canRestoreDraft ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleRestoreDraft}
+          className="min-h-11 rounded-full border border-white/20 px-4 py-2.5 text-sm text-white/80 hover:border-white/40 disabled:opacity-60"
+        >
+          Restore draft
+        </button>
+      ) : null}
+
+      {savedStatus !== "archived" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleArchive}
+          className="min-h-11 rounded-full border border-amber-300/30 px-4 py-2.5 text-sm text-amber-200 hover:border-amber-200/50 disabled:opacity-60"
+        >
+          Archive
+        </button>
+      ) : null}
+
+      {savedStatus === "draft" || savedStatus === "archived" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handlePermanentDelete}
+          className="min-h-11 rounded-full border border-red-400/40 px-4 py-2.5 text-sm text-red-300 hover:border-red-300/60 disabled:opacity-60"
+        >
+          Delete
+        </button>
+      ) : null}
+    </div>
+  ) : null;
+
   return (
-    <form onSubmit={handleSubmit} className="mt-6 max-w-3xl space-y-5">
+    <form
+      onSubmit={handleSubmit}
+      className="mt-4 max-w-3xl space-y-5 pb-36 sm:mt-6 sm:pb-8"
+    >
+      {mode === "edit" ? (
+        <div className="rounded-2xl border border-white/10 bg-[#151515] px-4 py-4">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+            Current status
+          </p>
+          <p className="mt-2 text-sm font-medium text-white">
+            {TRIBE_STATUS_LABELS[savedStatus]}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-white/50">
+            Edit fields below, then use Save. Use Publish to go live in one tap
+            (draft → review → verified → published).
+          </p>
+          {/* Desktop / large screens: actions stay with the status card. */}
+          <div className="mt-4 hidden sm:block">{actionButtons}</div>
+        </div>
+      ) : (
+        <p className="text-sm text-white/50">
+          New tribes start as <span className="text-white/80">draft</span>. After
+          create, use <span className="text-white/80">Publish</span> on the edit
+          page to go live in one tap.
+        </p>
+      )}
+
       {FIELD_CONFIG.map((field) => (
         <label
           key={field.key}
@@ -205,30 +433,6 @@ export default function TribeEditor({
         </label>
       ))}
 
-      {mode === "edit" ? (
-        <label className="block text-xs uppercase tracking-[0.15em] text-white/45">
-          Status
-          <select
-            value={status}
-            onChange={(event) =>
-              setStatus(event.target.value as AdminTribeStatus)
-            }
-            className="mt-2 w-full rounded-lg border border-white/15 bg-[#0b0b0b] px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-white/40"
-          >
-            {allowedNextStatuses.map((value) => (
-              <option key={value} value={value}>
-                {TRIBE_STATUS_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <p className="text-sm text-white/50">
-          New tribes are created as <span className="text-white/80">draft</span>
-          . Publish only after review → verified → published.
-        </p>
-      )}
-
       {error ? (
         <p className="text-sm text-red-300" role="alert">
           {error}
@@ -240,51 +444,47 @@ export default function TribeEditor({
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-60"
-        >
-          {pending ? "Saving…" : mode === "create" ? "Create tribe" : "Save changes"}
-        </button>
-        <Link
-          href="/admin/tribes"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/70 hover:border-white/30 hover:text-white"
-        >
-          Back to list
-        </Link>
-      </div>
-
-      {mode === "edit" && initialTribe ? (
-        <div className="mt-8 space-y-3 border-t border-white/10 pt-6">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
-            Danger zone
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {status !== "archived" ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={handleArchive}
-                className="rounded-full border border-amber-300/30 px-4 py-2 text-sm text-amber-200 hover:border-amber-200/50 disabled:opacity-60"
-              >
-                Archive tribe
-              </button>
-            ) : null}
-            {status === "draft" || status === "archived" ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={handlePermanentDelete}
-                className="rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-300 hover:border-red-300/60 disabled:opacity-60"
-              >
-                Delete permanently
-              </button>
-            ) : null}
-          </div>
+      {mode === "create" ? (
+        <div className="flex flex-wrap gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={pending}
+            className="min-h-11 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-60"
+          >
+            {pending ? "Creating…" : "Create tribe"}
+          </button>
+          <Link
+            href="/admin/tribes"
+            className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2.5 text-sm text-white/70 hover:border-white/30 hover:text-white"
+          >
+            Back to list
+          </Link>
         </div>
-      ) : null}
+      ) : (
+        <>
+          <div className="hidden pt-2 sm:block">
+            <Link
+              href="/admin/tribes"
+              className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2.5 text-sm text-white/70 hover:border-white/30 hover:text-white"
+            >
+              Back to list
+            </Link>
+          </div>
+
+          {/* Phone: fixed bottom dock keeps Archive / Delete reachable while scrolling. */}
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b0b0b]/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:hidden">
+            <div className="mx-auto max-w-3xl space-y-2">
+              {actionButtons}
+              <Link
+                href="/admin/tribes"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-white/15 px-4 py-2.5 text-sm text-white/70 hover:border-white/30 hover:text-white"
+              >
+                Back to list
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
     </form>
   );
 }

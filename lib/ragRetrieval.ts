@@ -1,5 +1,6 @@
 import { publishedContentFilter } from "./admin/content/publication";
 import { getDatabase } from "./db";
+import { resolvePublishedTribeSlug } from "./retrieval/publishedTribeLookup";
 import localKnowledgeData from "../data/knowledgeBase.json";
 
 // ---------------------------------------------------------------------------
@@ -323,8 +324,9 @@ export async function retrieveContext(question: string): Promise<RetrievalResult
       return { context: contextBlocks.join("\n\n---\n\n"), sources };
     }
 
-    // --- Path B: Specific tribe lookup ---
-    const tribeSlug = detectTribeSlug(qLower);
+    // --- Path B: Specific tribe lookup (static 18 + admin-published) ---
+    const tribeSlug =
+      detectTribeSlug(qLower) ?? (await resolvePublishedTribeSlug(question));
     if (tribeSlug) {
       const tribeDoc = await db
         .collection("tribes")

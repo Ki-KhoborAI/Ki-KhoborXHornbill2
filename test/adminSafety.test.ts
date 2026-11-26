@@ -107,23 +107,31 @@ describe("Database write guards", () => {
 });
 
 describe("Publication eligibility", () => {
-  it("exposes a published-only Mongo filter", () => {
-    assert.deepEqual(publishedContentFilter, { status: "published" });
+  it("exposes a public-visibility Mongo filter for published + legacy importer drafts", () => {
     assert.equal(PUBLISHED_CONTENT_STATUS, "published");
+    assert.ok(Array.isArray(publishedContentFilter.$or));
     assert.deepEqual(withPublishedContentFilter({ slug: "angami" }), {
       slug: "angami",
-      status: "published",
+      $or: publishedContentFilter.$or,
     });
   });
 
-  it("accepts only status === published for public retrieval", () => {
+  it("accepts published and legacy importer drafts for public retrieval", () => {
     assert.equal(isPublishedForPublicRetrieval({ status: "published" }), true);
-    assert.equal(isPublishedForPublicRetrieval({ status: "draft" }), false);
+    assert.equal(isPublishedForPublicRetrieval({ status: "draft" }), true);
+    assert.equal(
+      isPublishedForPublicRetrieval({ status: "draft", createdBy: null }),
+      true
+    );
+    assert.equal(
+      isPublishedForPublicRetrieval({ status: "draft", createdBy: "kiadmin" }),
+      false
+    );
     assert.equal(isPublishedForPublicRetrieval({ status: "in_review" }), false);
     assert.equal(isPublishedForPublicRetrieval({ status: "verified" }), false);
     assert.equal(isPublishedForPublicRetrieval({ status: "archived" }), false);
-    assert.equal(isPublishedForPublicRetrieval({}), false);
-    assert.equal(isPublishedForPublicRetrieval({ status: null }), false);
+    assert.equal(isPublishedForPublicRetrieval({}), true);
+    assert.equal(isPublishedForPublicRetrieval({ status: null }), true);
     assert.equal(isPublishedForPublicRetrieval(null), false);
   });
 });

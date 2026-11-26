@@ -1,37 +1,62 @@
 /**
  * Public retrieval eligibility for tribes and knowledge items.
- * Only explicitly published documents may reach RAG / public search.
+ *
+ * Eligible:
+ * - status === "published"
+ * - legacy importer rows still marked "draft" but with no admin createdBy
+ *   (festival catalog was imported as draft before the admin workflow)
+ * - documents with missing/null status (pre-status-field data)
+ *
+ * Ineligible:
+ * - draft/in_review/verified/archived content created or owned via admin
+ * - archived / in_review / verified editorial states
  */
+
+import type { Document, Filter } from "mongodb";
 
 export const PUBLISHED_CONTENT_STATUS = "published" as const;
 
 /** Mongo filter for public RAG and search queries. */
-export const publishedContentFilter = {
-  status: PUBLISHED_CONTENT_STATUS,
-} as const;
+export const publishedContentFilter: Filter<Document> = {
+  $or: [
+    { status: PUBLISHED_CONTENT_STATUS },
+    { status: { $exists: false } },
+    { status: null },
+    // Importer locked status to "draft" but that catalog was live festival content.
+    // Admin-authored drafts always set createdBy and stay private until published.
+    { status: "draft", createdBy: { $exists: false } },
+    { status: "draft", createdBy: null },
+  ],
+};
 
 export type PublicationStatusInput = {
   status?: unknown;
+  createdBy?: unknown;
 };
 
 /**
- * Returns true only when status is exactly "published".
- * Missing, null, draft, in_review, verified, and archived are all ineligible.
+ * Returns true when a document may be shown in public Ask / search.
  */
 export function isPublishedForPublicRetrieval(
   doc: PublicationStatusInput | null | undefined
 ): boolean {
-  return doc?.status === PUBLISHED_CONTENT_STATUS;
+  if (!doc) return false;
+  if (doc.status === PUBLISHED_CONTENT_STATUS) return true;
+  if (doc.status === undefined || doc.status === null) return true;
+  if (doc.status === "draft" && (doc.createdBy === undefined || doc.createdBy === null)) {
+    return true;
+  }
+  return false;
 }
 
 /**
- * Merge the published-only constraint into an existing Mongo filter object.
+ * Merge the public-visibility constraint into an existing Mongo filter object.
  */
 export function withPublishedContentFilter<T extends Record<string, unknown>>(
   filter: T = {} as T
-): T & { status: typeof PUBLISHED_CONTENT_STATUS } {
+): T & Filter<Document> {
   return {
     ...filter,
-    status: PUBLISHED_CONTENT_STATUS,
+    ...publishedContentFilter,
   };
 }

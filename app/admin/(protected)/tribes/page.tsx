@@ -39,9 +39,8 @@ async function TribesPageContent() {
       </p>
       <h1 className="mt-2 text-2xl font-medium tracking-tight">Tribes</h1>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
-        Browse, create, edit, archive, and permanently delete tribe records in
-        the configured development database. Status changes follow the editorial
-        workflow (draft → in review → verified → published).
+        Open a tribe to Save, Review, Publish, Archive, or Delete from one page.
+        New tribes start as draft — use All or Draft to find them, then Publish.
       </p>
 
       {loadError ? (
