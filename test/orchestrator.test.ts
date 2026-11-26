@@ -231,9 +231,15 @@ describe("Orchestration Layer - Local Offline Retrieval", () => {
     assert.equal(outcome.kind, "structured_response");
     if (outcome.kind === "structured_response") {
       assert.equal(outcome.response.dataSourceUsed, "local");
-      assert.match(outcome.response.answer, /18 records/);
+      assert.equal(outcome.response.title, "Indigenous Tribes of Nagaland");
+      assert.match(outcome.response.answer, /Official Naga Tribes \(15\)/);
+      assert.match(
+        outcome.response.answer,
+        /Recognised Non-Naga Indigenous Tribes \(4\)/
+      );
       assert.match(outcome.response.answer, /Angami/);
       assert.match(outcome.response.answer, /Zeliang/);
+      assert.match(outcome.response.answer, /Mikir/);
     }
   });
 
@@ -345,8 +351,12 @@ describe("Orchestration Layer - End-to-End OrchestrateMessage", () => {
         conversationHistory: [],
       });
       assert.equal(response.dataSourceUsed, "local");
-      assert.equal(response.title, "The 18 Indigenous Tribes of Nagaland");
-      assert.match(response.answer, /18 records/);
+      assert.equal(response.title, "Indigenous Tribes of Nagaland");
+      assert.match(response.answer, /Official Naga Tribes \(15\)/);
+      assert.match(
+        response.answer,
+        /Recognised Non-Naga Indigenous Tribes \(4\)/
+      );
     });
   });
 
@@ -391,7 +401,7 @@ describe("Orchestration Layer - End-to-End OrchestrateMessage", () => {
     });
     if (response.dataSourceUsed === "local") {
       // Atlas unreachable in this environment — offline path still valid.
-      assert.equal(response.title, "The 18 Indigenous Tribes of Nagaland");
+      assert.equal(response.title, "Indigenous Tribes of Nagaland");
       return;
     }
     if (response.title === "Information Not Available") {
