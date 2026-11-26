@@ -39,8 +39,9 @@ async function TribesPageContent() {
       </p>
       <h1 className="mt-2 text-2xl font-medium tracking-tight">Tribes</h1>
       <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
-        Open a tribe to Save, Review, Publish, Archive, or Delete from one page.
-        New tribes start as draft — use All or Draft to find them, then Publish.
+        Official Naga Tribes (15) and Recognised Non-Naga indigenous tribes (4:
+        Garo, Kachari, Kuki, Mikir) are listed separately below. Open a tribe to
+        Save, Review, Publish, Archive, or Delete from one page.
       </p>
 
       {loadError ? (
