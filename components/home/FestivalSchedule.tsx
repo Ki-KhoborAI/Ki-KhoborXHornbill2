@@ -42,16 +42,21 @@ export default function FestivalSchedule() {
   const listboxId = useId();
 
   useEffect(() => {
-    const mountedAt = new Date();
-    setDemoAnchor(mountedAt);
-    setNow(mountedAt);
-    const tick = () => setNow(new Date());
-    const intervalId = window.setInterval(tick, 30_000);
+    // Defer initial clock sync so setState is not synchronous in the effect body.
+    let intervalId = 0;
+    const startId = window.setTimeout(() => {
+      const mountedAt = new Date();
+      setDemoAnchor(mountedAt);
+      setNow(mountedAt);
+      const tick = () => setNow(new Date());
+      intervalId = window.setInterval(tick, 30_000);
+    }, 0);
     const onVisible = () => {
-      if (document.visibilityState === "visible") tick();
+      if (document.visibilityState === "visible") setNow(new Date());
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      window.clearTimeout(startId);
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
     };

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import DiscoveryCard from "../../../components/DiscoveryCard";
+import { IconArrowLeft } from "../../../components/icons";
 import { locations, targetMorungCount } from "../../../data/locations";
 
 export const instant = false;
@@ -19,9 +20,10 @@ export default function ExploreMorungsPage() {
           </Link>
           <Link
             href="/explore"
-            className="text-xs text-white/60 transition hover:text-white"
+            className="inline-flex items-center gap-1.5 text-xs text-white/60 transition hover:text-white"
           >
-            ← Explore
+            <IconArrowLeft className="h-3.5 w-3.5" />
+            Explore
           </Link>
         </div>
       </header>

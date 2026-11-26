@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IconArrowUpRight } from "./icons";
 import MorungCardImage from "./MorungCardImage";
 
 type DiscoveryCardProps = {
@@ -66,7 +67,7 @@ export default function DiscoveryCard({
           className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-white/60 transition group-hover:border-white/35 group-hover:text-white"
           aria-hidden="true"
         >
-          ↗
+          <IconArrowUpRight className="h-4 w-4" />
         </span>
       </div>
     </Link>

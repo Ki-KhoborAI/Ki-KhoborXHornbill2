@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { IconArrowUpRight } from "./icons";
 
 export type SuggestionBubbleItem = {
   key: string;
@@ -37,8 +38,11 @@ export default function SuggestionBubbles({
           return (
             <Link key={item.key} href={item.href} className={bubbleClass}>
               {item.label}
-              <span aria-hidden="true" className="ml-1.5 text-white/45">
-                ↗
+              <span
+                aria-hidden="true"
+                className="ml-1.5 inline-flex align-middle text-white/45"
+              >
+                <IconArrowUpRight className="h-3.5 w-3.5" />
               </span>
             </Link>
           );

@@ -1,9 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 type SiteHeaderProps = {
-  rightLabel: string;
+  rightLabel: ReactNode;
   rightHref?: string;
   contextLabel?: string;
 };
@@ -13,7 +14,8 @@ export default function SiteHeader({
   rightHref,
   contextLabel,
 }: SiteHeaderProps) {
-  const rightClass = "text-xs text-white/60 transition hover:text-white";
+  const rightClass =
+    "inline-flex items-center gap-1.5 text-xs text-white/60 transition hover:text-white";
 
   return (
     <header className="flex items-center justify-between border-b border-white/10 px-5 py-3.5 sm:px-10 sm:py-6">

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import BottomNav from "../components/BottomNav";
 import "./globals.css";
@@ -21,6 +21,12 @@ export const metadata: Metadata = {
     "Discover the people, places, stories, and traditions of the Hornbill Festival through Ki-Khobor.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,6 +38,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        {/* Blocks scrolled content from overlapping the iOS status bar. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-x-0 top-0 z-50 bg-black"
+          style={{ height: "env(safe-area-inset-top)" }}
+        />
         <ServiceWorkerRegistration />
         {children}
         {/*

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { locations } from "../../../data/locations";
 import KiKhoborConversation from "../../../components/KiKhoborConversation";
+import { IconArrowLeft } from "../../../components/icons";
 import SiteHeader from "../../../components/SiteHeader";
 
 const BOTTOM_NAV_HEIGHT = 64;
@@ -96,7 +97,15 @@ export default function ExperienceClient({
       }}
     >
       <div className="z-20 shrink-0 bg-[#0b0b0b]">
-        <SiteHeader rightLabel="← Morungs" rightHref="/explore/morungs" />
+        <SiteHeader
+          rightLabel={
+            <>
+              <IconArrowLeft className="h-3.5 w-3.5" />
+              Morungs
+            </>
+          }
+          rightHref="/explore/morungs"
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#0b0b0b] pb-32">
