@@ -256,18 +256,11 @@ export default function KiKhoborConversation({
                       aria-live="polite"
                     >
                       <div className="rounded-2xl bg-white/[0.05] px-4 py-4 sm:px-5 sm:py-5">
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                          {message.category ? (
-                            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/40">
-                              {message.category}
-                            </span>
-                          ) : null}
-                          {message.source ? (
-                            <span className="text-[10px] text-neutral-500">
-                              Source: {message.source.split(",")[0]}
-                            </span>
-                          ) : null}
-                        </div>
+                        {message.category ? (
+                          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-white/40">
+                            {message.category}
+                          </p>
+                        ) : null}
                         {message.title ? (
                           <h2 className="mb-2 text-base font-medium tracking-tight text-white">
                             {message.title}

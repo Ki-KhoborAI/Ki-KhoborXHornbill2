@@ -40,7 +40,7 @@ export const eventCategories: Record<EventCategorySlug, EventCategory> = {
   "cultural-programmes": {
     slug: "cultural-programmes",
     title: "Cultural Programmes",
-    image: "/images/morungs/chakhesang-card.jpg",
+    image: "/images/events/cultural-programmes.webp",
     cardDescription:
       "Traditional dances, folk songs and cultural performances from across Nagaland.",
     welcomeLabel: "Welcome",
@@ -61,7 +61,7 @@ export const eventCategories: Record<EventCategorySlug, EventCategory> = {
   "exhibitions-competitions": {
     slug: "exhibitions-competitions",
     title: "Exhibitions & Competitions",
-    image: "/images/morungs/DSC09719.webp",
+    image: "/images/events/exhibitions-competitions.webp",
     cardDescription: "Explore visual art, historical archives and creative works.",
     welcomeLabel: "Welcome",
     description:
@@ -81,7 +81,7 @@ export const eventCategories: Record<EventCategorySlug, EventCategory> = {
   "across-nagaland": {
     slug: "across-nagaland",
     title: "Events Across Nagaland",
-    image: "/images/morungs/DSC09723.webp",
+    image: "/images/events/events-across-nagaland.webp",
     cardDescription:
       "Discover festivals, village experiences and cultural events across Nagaland.",
     welcomeLabel: "Welcome",
