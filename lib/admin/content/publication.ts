@@ -12,10 +12,12 @@
  * - archived / in_review / verified editorial states
  */
 
+import type { Document, Filter } from "mongodb";
+
 export const PUBLISHED_CONTENT_STATUS = "published" as const;
 
 /** Mongo filter for public RAG and search queries. */
-export const publishedContentFilter = {
+export const publishedContentFilter: Filter<Document> = {
   $or: [
     { status: PUBLISHED_CONTENT_STATUS },
     { status: { $exists: false } },
@@ -25,7 +27,7 @@ export const publishedContentFilter = {
     { status: "draft", createdBy: { $exists: false } },
     { status: "draft", createdBy: null },
   ],
-} as const;
+};
 
 export type PublicationStatusInput = {
   status?: unknown;
@@ -52,9 +54,9 @@ export function isPublishedForPublicRetrieval(
  */
 export function withPublishedContentFilter<T extends Record<string, unknown>>(
   filter: T = {} as T
-): T & { $or: (typeof publishedContentFilter)["$or"] } {
+): T & Filter<Document> {
   return {
     ...filter,
-    $or: publishedContentFilter.$or,
+    ...publishedContentFilter,
   };
 }
