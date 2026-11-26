@@ -1,4 +1,5 @@
 import DiscoveryCard from "../../components/DiscoveryCard";
+import { IconArrowUpRight } from "../../components/icons";
 import SiteHeader from "../../components/SiteHeader";
 import { eventCategories } from "../../data/eventCategories";
 
@@ -7,7 +8,15 @@ export default function EventsPage() {
 
   return (
     <main className="min-h-screen bg-[#080808] pb-[calc(64px+env(safe-area-inset-bottom))] text-white">
-      <SiteHeader rightLabel="Explore places ↗" rightHref="/explore" />
+      <SiteHeader
+        rightLabel={
+          <>
+            Explore places
+            <IconArrowUpRight className="h-3.5 w-3.5" />
+          </>
+        }
+        rightHref="/explore"
+      />
 
       <section className="mx-auto max-w-6xl px-5 pb-16 pt-12 sm:px-10 sm:pb-24 sm:pt-20">
         <div className="max-w-3xl">

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import type { EventCategory } from "../../data/eventCategories";
+import { IconArrowLeft } from "../icons";
 import KiKhoborConversation from "../KiKhoborConversation";
 import SiteHeader from "../SiteHeader";
 
@@ -24,7 +25,15 @@ export default function EventsCategoryClient({
       }}
     >
       <div className="z-20 shrink-0 bg-[#0b0b0b]">
-        <SiteHeader rightLabel="← Events" rightHref="/events" />
+        <SiteHeader
+          rightLabel={
+            <>
+              <IconArrowLeft className="h-3.5 w-3.5" />
+              Events
+            </>
+          }
+          rightHref="/events"
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#0b0b0b] pb-24">

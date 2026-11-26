@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IconArrowLeft } from "../../../components/icons";
 
 export const instant = false;
 
@@ -15,9 +16,10 @@ export default function UsefulInformationPage() {
           </Link>
           <Link
             href="/explore/food-handicrafts"
-            className="text-xs text-white/60 transition hover:text-white"
+            className="inline-flex items-center gap-1.5 text-xs text-white/60 transition hover:text-white"
           >
-            ← Food &amp; Handicrafts
+            <IconArrowLeft className="h-3.5 w-3.5" />
+            Food &amp; Handicrafts
           </Link>
         </div>
       </header>

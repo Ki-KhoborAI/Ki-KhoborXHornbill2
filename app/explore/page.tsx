@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { IconArrowUpRight } from "../../components/icons";
 
 export const instant = false;
 
@@ -71,7 +72,7 @@ export default function ExplorePage() {
                     {destination.description}
                   </p>
                   <span className="mt-4 inline-flex items-center gap-2 text-xs text-white/75 transition group-hover:text-white">
-                    Explore <span aria-hidden="true">↗</span>
+                    Explore <IconArrowUpRight className="h-3.5 w-3.5" />
                   </span>
                 </div>
               </div>

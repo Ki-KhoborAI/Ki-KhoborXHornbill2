@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import { IconArrowUpRight } from "./icons";
 import KiKhoborLogo from "./KiKhoborLogo";
 
 export type AskInputProps = {
@@ -80,7 +81,7 @@ export default function AskInput({
         }`}
       >
         {actionLabel ? <span className="mr-1">{actionLabel}</span> : null}
-        <span aria-hidden="true">↗</span>
+        <IconArrowUpRight className="h-4 w-4" />
       </button>
     </form>
   );

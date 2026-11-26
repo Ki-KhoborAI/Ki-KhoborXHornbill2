@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { IconArrowLeft } from "../../../components/icons";
 import KiKhoborConversation from "../../../components/KiKhoborConversation";
 
 const suggestions = [
@@ -27,9 +28,10 @@ export default function FoodHandicraftsClient() {
           </Link>
           <Link
             href="/explore"
-            className="text-xs text-white/60 transition hover:text-white"
+            className="inline-flex items-center gap-1.5 text-xs text-white/60 transition hover:text-white"
           >
-            ← Explore
+            <IconArrowLeft className="h-3.5 w-3.5" />
+            Explore
           </Link>
         </div>
       </header>

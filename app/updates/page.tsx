@@ -1,10 +1,19 @@
 import Link from "next/link";
+import { IconArrowUpRight } from "../../components/icons";
 import SiteHeader from "../../components/SiteHeader";
 
 export default function UpdatesPage() {
   return (
     <main className="min-h-screen bg-[#080808] pb-[calc(64px+env(safe-area-inset-bottom))] text-white">
-      <SiteHeader rightLabel="Explore ↗" rightHref="/explore" />
+      <SiteHeader
+        rightLabel={
+          <>
+            Explore
+            <IconArrowUpRight className="h-3.5 w-3.5" />
+          </>
+        }
+        rightHref="/explore"
+      />
 
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-10 sm:py-24">
         <p className="text-[10px] uppercase tracking-[0.25em] text-white/45">
@@ -41,7 +50,8 @@ export default function UpdatesPage() {
               href="/explore"
               className="mt-6 inline-flex items-center gap-3 border border-white/20 px-4 py-2.5 text-xs text-white/85 transition hover:border-white/50 hover:text-white"
             >
-              Explore Morungs <span aria-hidden="true">↗</span>
+              Explore Morungs{" "}
+              <IconArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
