@@ -2,12 +2,27 @@ import { publishedContentFilter } from "../admin/content/publication";
 import { getDatabase } from "../db";
 import {
   detectTribeSubCategory,
+  findMatchingStall,
+  formatArtistLineupResponse,
+  formatStallDetailResponse,
+  formatStallListResponse,
   formatTribeAggregateResponse,
   formatTribeResponse,
+  type ArtistLineupDoc,
+  type StallCatalogDoc,
 } from "../responseBuilder";
 import { festivalDateContextScoreAdjustment } from "../knowledgeQuality";
 import type { IntentClass, RetrievalOutcome, RetrievedRecord } from "../types";
 import { evaluateRetrievalRelevance } from "./relevanceEvaluator";
+
+/** New festival catalogue collections (not on the tribes/knowledge publish workflow yet). */
+const STALLS_COLLECTION = "stalls_information";
+const ARTIST_LINEUP_COLLECTION = "artist_lineup";
+
+/** Exclude archived only — stalls/artists may be verified before a publish workflow exists. */
+const CATALOG_VISIBLE_FILTER = {
+  status: { $nin: ["archived"] },
+};
 
 const SYNONYMS: Record<string, string[]> = {
   where: ["location", "located", "venue", "place", "kisama", "kohima", "site", "address", "situated"],
@@ -53,6 +68,39 @@ export async function retrieveFromAtlas(params: RetrieveParams): Promise<Retriev
   const db = await getDatabase();
   const tribesCol = db.collection("tribes");
   const kiCol = db.collection("knowledge_items");
+  const stallsCol = db.collection(STALLS_COLLECTION);
+  const artistCol = db.collection(ARTIST_LINEUP_COLLECTION);
+
+  // 0a. Food stalls catalogue (`stalls_information`)
+  if (intent === "FACTUAL_STALLS") {
+    const stalls = (await stallsCol
+      .find(CATALOG_VISIBLE_FILTER)
+      .sort({ stallName: 1 })
+      .toArray()) as StallCatalogDoc[];
+    const matched = findMatchingStall(stalls, qLower);
+    if (matched) {
+      return {
+        kind: "structured_response",
+        response: formatStallDetailResponse(matched, "atlas"),
+      };
+    }
+    return {
+      kind: "structured_response",
+      response: formatStallListResponse(stalls, "atlas"),
+    };
+  }
+
+  // 0b. Artist lineup catalogue (`artist_lineup`)
+  if (intent === "FACTUAL_ARTIST_LINEUP") {
+    const artists = (await artistCol
+      .find(CATALOG_VISIBLE_FILTER)
+      .sort({ artistName: 1, name: 1, title: 1 })
+      .toArray()) as ArtistLineupDoc[];
+    return {
+      kind: "structured_response",
+      response: formatArtistLineupResponse(artists, "atlas"),
+    };
+  }
 
   // 1. Tribe Aggregate Request — published documents only
   if (intent === "FACTUAL_TRIBE_LIST") {

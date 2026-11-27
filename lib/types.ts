@@ -19,6 +19,8 @@ export type IntentClass =
   | "FACTUAL_ACTIVITIES"       // Things to do / experiences at the festival
   | "FACTUAL_LOCATION"         // Where is the festival / venue
   | "FACTUAL_DATES"            // When, festival dates, duration
+  | "FACTUAL_STALLS"           // Food stalls / vendors at Kisama
+  | "FACTUAL_ARTIST_LINEUP"    // Artist / music lineup
   | "FACTUAL_KNOWLEDGE"        // General knowledge query (crafts, nature, music…)
   | "FOLLOWUP"                 // Contextual follow-up (pronoun, continuation)
   | "OUT_OF_SCOPE_PRIVATE"     // Hotel Wi-Fi, passwords, booking codes
