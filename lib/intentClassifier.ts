@@ -35,6 +35,12 @@ const DATES_PATTERN =
 const FESTIVAL_OVERVIEW_PATTERN =
   /\b(what\s+is\s+(the\s+)?hornbill\s+festival|history\s+of\s+hornbill|why\s+is\s+it\s+called\s+hornbill|significance\s+of\s+hornbill\s+festival|purpose\s+of\s+(the\s+)?hornbill\s+festival)\b/i;
 
+const STALLS_PATTERN =
+  /\b(stalls?|food\s+stalls?|food\s+vendors?|vendors?|where\s+to\s+eat|eating\s+at\s+(kisama|hornbill)|naga\s+hill\s+platter|de\s+aurora)\b/i;
+
+const ARTIST_LINEUP_PATTERN =
+  /\b(artist\s+line[- ]?ups?|line[- ]?ups?|who\s+is\s+performing|performers?|concert\s+artists?|music\s+line[- ]?up|artists?\s+(at|for)\s+(the\s+)?hornbill)\b/i;
+
 /**
  * Tier 1: Fast deterministic classification.
  * Returns null if the intent is ambiguous or requires Gemini interpretation.
@@ -101,7 +107,17 @@ export function classifyIntentDeterministically(
     return "FACTUAL_FESTIVAL";
   }
 
-  // 12. Specific tribe query if a tribe slug is already identified
+  // 12. Food stalls / vendors at Kisama
+  if (STALLS_PATTERN.test(lower)) {
+    return "FACTUAL_STALLS";
+  }
+
+  // 13. Artist / music lineup
+  if (ARTIST_LINEUP_PATTERN.test(lower)) {
+    return "FACTUAL_ARTIST_LINEUP";
+  }
+
+  // 14. Specific tribe query if a tribe slug is already identified
   if (detectedTribeSlug) {
     return "FACTUAL_TRIBE";
   }
@@ -126,6 +142,8 @@ FACTUAL_TRIBE: Inquiries about a specific Naga tribe, their culture, or traditio
 FACTUAL_LOCATION: Inquiries about where the festival is held or how to reach
 FACTUAL_DATES: Inquiries about when the festival occurs or festival dates
 FACTUAL_FESTIVAL: Overview, history, or purpose of the Hornbill Festival
+FACTUAL_STALLS: Food stalls, vendors, menus, or where to eat at Kisama / Hornbill
+FACTUAL_ARTIST_LINEUP: Artist lineup, performers, concerts, or who is performing
 FACTUAL_KNOWLEDGE: All other factual, informational, activity, regulation, nature, or general knowledge inquiries
 OUT_OF_SCOPE_PRIVATE: Strictly hotel Wi-Fi passwords, personal booking codes, room key credentials
 OUT_OF_SCOPE_POLITICAL: Current government leaders, CM, governor, politics, elections
@@ -160,6 +178,8 @@ Respond with ONLY the exact intent class name, nothing else.`;
       "FACTUAL_LOCATION",
       "FACTUAL_DATES",
       "FACTUAL_FESTIVAL",
+      "FACTUAL_STALLS",
+      "FACTUAL_ARTIST_LINEUP",
       "FACTUAL_KNOWLEDGE",
       "OUT_OF_SCOPE_PRIVATE",
       "OUT_OF_SCOPE_POLITICAL",

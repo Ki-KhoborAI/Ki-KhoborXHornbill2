@@ -173,6 +173,21 @@ describe("Orchestration Layer - Intent Classification", () => {
     );
   });
 
+  it("classifies stall and artist-lineup inquiries", () => {
+    assert.equal(
+      classifyIntentDeterministically("I want information on stalls.", null),
+      "FACTUAL_STALLS"
+    );
+    assert.equal(
+      classifyIntentDeterministically("Tell me about Naga Hill Platter", null),
+      "FACTUAL_STALLS"
+    );
+    assert.equal(
+      classifyIntentDeterministically("What is the artist lineup?", null),
+      "FACTUAL_ARTIST_LINEUP"
+    );
+  });
+
   it("classifies specific tribe queries when tribe slug is detected", () => {
     assert.equal(
       classifyIntentDeterministically("Tell me about the Angami people", "angami"),

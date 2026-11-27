@@ -349,6 +349,290 @@ export function formatTribeResponse(
   };
 }
 
+/** Stall document shape stored in Mongo `stalls_information`. */
+export type StallCatalogDoc = {
+  slug?: string;
+  stallName?: string;
+  location?: {
+    stallNumberAndZone?: string;
+    area?: string;
+    landmark?: string;
+  };
+  tribeOrGroup?: string;
+  inCharge?: { name?: string; role?: string };
+  contact?: { phone?: string; whatsapp?: boolean };
+  hours?: string;
+  paymentMethods?: string[];
+  paymentNotes?: string;
+  signatureDishes?: string[];
+  cuisineType?: string;
+  keyIngredients?: string[];
+  menu?: Array<{
+    dish?: string;
+    type?: string;
+    priceInr?: number;
+    ingredients?: string[];
+    spiceLevel?: string;
+  }>;
+  menuStatus?: string;
+  menuNotes?: string;
+  priceRangeInr?: { min?: number; max?: number };
+  allergenAdvisory?: string;
+  takeaway?: {
+    available?: boolean;
+    dineInAvailable?: boolean;
+    notes?: string;
+  };
+  verification?: {
+    verifiedBy?: string;
+    designation?: string;
+    dateAsOnSheet?: string;
+  };
+  publicationNote?: string;
+};
+
+/** Artist document shape stored in Mongo `artist_lineup` (flexible for future fields). */
+export type ArtistLineupDoc = {
+  slug?: string;
+  name?: string;
+  artistName?: string;
+  title?: string;
+  day?: string;
+  date?: string;
+  stage?: string;
+  venue?: string;
+  genre?: string;
+  bio?: string;
+  description?: string;
+  notes?: string;
+};
+
+function stallDisplayName(stall: StallCatalogDoc): string {
+  return (stall.stallName || stall.slug || "Unnamed stall").trim();
+}
+
+export function findMatchingStall(
+  stalls: StallCatalogDoc[],
+  query: string
+): StallCatalogDoc | null {
+  const q = query.toLowerCase();
+  const scored = stalls
+    .map((stall) => {
+      const name = stallDisplayName(stall).toLowerCase();
+      const slug = (stall.slug || "").toLowerCase();
+      let score = 0;
+      if (name && q.includes(name)) score += 100;
+      if (slug && q.includes(slug.replace(/-/g, " "))) score += 90;
+      if (slug && q.includes(slug)) score += 80;
+      // Partial token overlap on stall name words longer than 3 chars
+      for (const part of name.split(/\s+/)) {
+        if (part.length > 3 && q.includes(part)) score += 20;
+      }
+      return { stall, score };
+    })
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.stall ?? null;
+}
+
+export function formatStallListResponse(
+  stalls: StallCatalogDoc[],
+  sourceProvider: "atlas" | "local" = "atlas"
+): AssistantResponse {
+  if (stalls.length === 0) {
+    return {
+      title: "Food Stalls",
+      category: "Stalls",
+      answer:
+        "Food stall information for Hornbill Festival 2026 is not available in the catalogue yet.",
+      source: "Ki-Khobor stalls catalogue",
+      relatedItems: [],
+      dataSourceUsed: sourceProvider,
+    };
+  }
+
+  const sorted = [...stalls].sort((a, b) =>
+    stallDisplayName(a).localeCompare(stallDisplayName(b))
+  );
+  const lines = sorted.map((stall, idx) => {
+    const zone = stall.location?.stallNumberAndZone || "Zone not listed";
+    const specialty =
+      stall.signatureDishes?.[0] || stall.cuisineType || "Specialty not listed";
+    return `${idx + 1}. ${stallDisplayName(stall)} — ${zone}\n   Specialty: ${specialty}`;
+  });
+
+  const answer =
+    `Here are the food stalls currently available in the Ki-Khobor catalogue (${sorted.length}):\n\n` +
+    `${lines.join("\n\n")}\n\n` +
+    `Ask about a specific stall by name for menu, prices, contact, and payment details.`;
+
+  return {
+    title: "Food Stalls at Hornbill Festival 2026",
+    category: "Stalls",
+    answer,
+    source: "Ki-Khobor Official Food Stall Data Collection",
+    relatedItems: sorted.slice(0, 4).map((stall) => ({
+      id: `stall-${stall.slug || stallDisplayName(stall)}`,
+      title: stallDisplayName(stall),
+      category: "stall",
+    })),
+    dataSourceUsed: sourceProvider,
+  };
+}
+
+export function formatStallDetailResponse(
+  stall: StallCatalogDoc,
+  sourceProvider: "atlas" | "local" = "atlas"
+): AssistantResponse {
+  const name = stallDisplayName(stall);
+  const parts: string[] = [`**${name}**`];
+
+  if (stall.location?.stallNumberAndZone) {
+    parts.push(`Location / Zone: ${stall.location.stallNumberAndZone}`);
+  }
+  if (stall.tribeOrGroup) {
+    parts.push(`Tribe / Group: ${stall.tribeOrGroup}`);
+  }
+  if (stall.inCharge?.name) {
+    parts.push(
+      `In-charge: ${stall.inCharge.name}${
+        stall.inCharge.role ? ` (${stall.inCharge.role})` : ""
+      }`
+    );
+  }
+  if (stall.contact?.phone) {
+    parts.push(
+      `Contact: ${stall.contact.phone}${
+        stall.contact.whatsapp ? " (WhatsApp)" : ""
+      }`
+    );
+  }
+  if (stall.hours) parts.push(`Hours: ${stall.hours}`);
+  if (stall.paymentNotes) {
+    parts.push(`Payment: ${stall.paymentNotes}`);
+  } else if (stall.paymentMethods?.length) {
+    parts.push(`Payment: ${stall.paymentMethods.join(", ")}`);
+  }
+  if (stall.cuisineType) parts.push(`Cuisine: ${stall.cuisineType}`);
+  if (stall.signatureDishes?.length) {
+    parts.push(`Signature dishes:\n${stall.signatureDishes.map((d) => `• ${d}`).join("\n")}`);
+  }
+  if (stall.keyIngredients?.length) {
+    parts.push(`Key ingredients: ${stall.keyIngredients.join(", ")}`);
+  }
+
+  if (stall.menu?.length) {
+    const menuLines = stall.menu.map((item) => {
+      const price =
+        typeof item.priceInr === "number" ? ` — ₹${item.priceInr}` : "";
+      const type = item.type ? ` (${item.type})` : "";
+      const spice = item.spiceLevel ? ` | Spice: ${item.spiceLevel}` : "";
+      const ingredients = item.ingredients?.length
+        ? ` | ${item.ingredients.join(", ")}`
+        : "";
+      return `• ${item.dish || "Item"}${type}${price}${spice}${ingredients}`;
+    });
+    parts.push(`Menu:\n${menuLines.join("\n")}`);
+  } else if (stall.menuStatus === "to_be_confirmed" || stall.menuNotes) {
+    parts.push(
+      stall.menuNotes ||
+        "Full menu items are still to be confirmed with the stall."
+    );
+    if (stall.priceRangeInr?.min != null && stall.priceRangeInr?.max != null) {
+      parts.push(
+        `Indicative price range: ₹${stall.priceRangeInr.min}–₹${stall.priceRangeInr.max}`
+      );
+    }
+  }
+
+  if (stall.allergenAdvisory) {
+    parts.push(`Allergy advisory: ${stall.allergenAdvisory}`);
+  }
+  if (stall.takeaway?.notes) {
+    parts.push(stall.takeaway.notes);
+  } else if (stall.takeaway?.available) {
+    parts.push("Takeaway is available.");
+  }
+  if (stall.verification?.verifiedBy) {
+    parts.push(
+      `Verified by: ${stall.verification.verifiedBy}${
+        stall.verification.dateAsOnSheet
+          ? ` · ${stall.verification.dateAsOnSheet}`
+          : ""
+      }`
+    );
+  }
+  if (stall.publicationNote) {
+    parts.push(`Note: ${stall.publicationNote}`);
+  }
+
+  return {
+    title: name,
+    category: "Stalls",
+    answer: parts.join("\n\n"),
+    source: "Ki-Khobor Official Food Stall Data Collection",
+    relatedItems: [
+      {
+        id: `stall-${stall.slug || name}`,
+        title: name,
+        category: "stall",
+      },
+    ],
+    dataSourceUsed: sourceProvider,
+  };
+}
+
+function artistDisplayName(artist: ArtistLineupDoc): string {
+  return (
+    artist.artistName ||
+    artist.name ||
+    artist.title ||
+    artist.slug ||
+    "Unnamed artist"
+  ).trim();
+}
+
+export function formatArtistLineupResponse(
+  artists: ArtistLineupDoc[],
+  sourceProvider: "atlas" | "local" = "atlas"
+): AssistantResponse {
+  if (artists.length === 0) {
+    return {
+      title: "Artist Lineup",
+      category: "Artist Lineup",
+      answer:
+        "The artist lineup catalogue is ready, but no artist entries have been added yet. Check back once the official Hornbill Festival 2026 lineup is published in Ki-Khobor.",
+      source: "Ki-Khobor artist lineup catalogue",
+      relatedItems: [],
+      dataSourceUsed: sourceProvider,
+    };
+  }
+
+  const sorted = [...artists].sort((a, b) =>
+    artistDisplayName(a).localeCompare(artistDisplayName(b))
+  );
+  const lines = sorted.map((artist, idx) => {
+    const bits = [artistDisplayName(artist)];
+    if (artist.day || artist.date) bits.push([artist.day, artist.date].filter(Boolean).join(" · "));
+    if (artist.stage || artist.venue) bits.push(artist.stage || artist.venue || "");
+    if (artist.genre) bits.push(artist.genre);
+    return `${idx + 1}. ${bits.filter(Boolean).join(" — ")}`;
+  });
+
+  return {
+    title: "Artist Lineup — Hornbill Festival 2026",
+    category: "Artist Lineup",
+    answer: `Here is the artist lineup currently in the Ki-Khobor catalogue (${sorted.length}):\n\n${lines.join("\n")}`,
+    source: "Ki-Khobor artist lineup catalogue",
+    relatedItems: sorted.slice(0, 4).map((artist) => ({
+      id: `artist-${artist.slug || artistDisplayName(artist)}`,
+      title: artistDisplayName(artist),
+      category: "artist_lineup",
+    })),
+    dataSourceUsed: sourceProvider,
+  };
+}
+
 export function formatTribeAggregateResponse(
   tribes: TribeLike[],
   intent: "count" | "list",
